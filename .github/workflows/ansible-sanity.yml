@@ -1,4 +1,3 @@
----
 # README FIRST
 # 1. Subscribe to https://github.com/ansible-collections/news-for-maintainers
 #    (click the Watch button on the homepage > Custom > Issues)
@@ -31,7 +30,7 @@
 #    it has to adhere to Python compatibility and CI testing requirements described in
 #    https://docs.ansible.com/ansible/latest/community/collection_contributors/collection_requirements.html.
 
-name: Ansible Test
+name: Sanity
 on:
   # Run CI against all pushes (direct commits, also merged PRs), Pull Requests
   push:
@@ -55,89 +54,63 @@ concurrency:
 
 jobs:
   ###
-  # Integration tests (RECOMMENDED)
+  # Sanity tests (REQUIRED)
   #
-  # https://docs.ansible.com/ansible/latest/dev_guide/testing_integration.html
+  # https://docs.ansible.com/ansible/latest/dev_guide/testing_sanity.html
 
-  # If the application you are testing is available as a docker container and you want to test
-  # multiple versions see the following for an example:
-  # https://github.com/ansible-collections/community.zabbix/tree/master/.github/workflows
-
-  integration:
-    runs-on: ubuntu-latest
-
-    name: I (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }})
+  sanity:
+    name: Sanity (Ⓐ${{ matrix.ansible }})
     strategy:
-      fail-fast: false
       matrix:
         ansible:
-          - devel
-        # - milestone
-        python:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
-        include:
+          # It's important that Sanity is tested against all stable-X.Y branches
+          # Testing against `devel` may fail as new tests are added.
+          # An alternative to `devel` is the `milestone` branch with
+          # gets synchronized with `devel` every few weeks and therefore
+          # tends to be a more stable target. Be aware that it is not updated
+          # around creation of a new stable branch, this might cause a problem
+          # that two different versions of ansible-test use the same sanity test
+          # ignore.txt file.
           # Add new versions announced in
           # https://github.com/ansible-collections/news-for-maintainers in a timely manner,
           # consider dropping testing against EOL versions and versions you don't support.
-          # ansible-core 2.16
-          - ansible: stable-2.16
-            python: "3.9"
-          - ansible: stable-2.16
-            python: "3.12"
-          # ansible-core 2.17
-          - ansible: stable-2.17
-            python: "3.9"
-          - ansible: stable-2.17
-            python: "3.12"
-          # ansible-core 2.18
-          - ansible: stable-2.18
-            python: "3.9"
-          - ansible: stable-2.18
-            python: "3.13"
-          # ansible-core 2.19
-          - ansible: stable-2.19
-            python: "3.9"
-          - ansible: stable-2.19
-            python: "3.13"
+          - stable-2.16
+          - stable-2.17
+          - stable-2.18
+          - stable-2.19
+          - devel
+        # - milestone
+    runs-on: ubuntu-latest
     steps:
-      - name: >-
-          Perform integration testing against
-          Ansible version ${{ matrix.ansible }}
-          under Python ${{ matrix.python }}
+      # Run sanity tests inside a Docker container.
+      # The docker container has all the pinned dependencies that are
+      # required and all Python versions Ansible supports.
+      - name: Perform sanity testing
         # See the documentation for the following GitHub action on
         # https://github.com/ansible-community/ansible-test-gh-action/blob/main/README.md
         uses: ansible-community/ansible-test-gh-action@release/v1
         with:
           ansible-core-version: ${{ matrix.ansible }}
-          # OPTIONAL command to run before invoking `ansible-test integration`
-          # pre-test-cmd:
-          target-python-version: ${{ matrix.python }}
-          testing-type: windows-integration
-          # Uncomment to configure a codecov token.
-          # Check here whether a token is required: https://docs.codecov.com/docs/codecov-tokens
-          # Collections in the github.com/ansible-collections/ namespace usually do not need a token.
-          # codecov-token: ${{ secrets.CODECOV_TOKEN }}
-          # OPTIONAL If your integration tests require code
+          testing-type: sanity
+          # OPTIONAL If your sanity tests require code
           # from other collections, install them like this
-          # test-deps: ansible.netcommon
+          # test-deps: >-
+          #   ansible.netcommon
+          #   ansible.utils
           # OPTIONAL If set to true, will test only against changed files,
           # which should improve CI performance. See limitations on
           # https://github.com/ansible-community/ansible-test-gh-action#pull-request-change-detection
           pull-request-change-detection: false
+          coverage: never # coverage is always very low for sanity tests, and doesn't make much sense
 
-  check: # This job does nothing and is only used for the branch protection
-    # or multi-stage CI jobs, like making sure that all tests pass before
-    # a publishing job is started.
+  # This job does nothing and is only used for the branch protection
+  # or multi-stage CI jobs, like making sure that all tests pass before
+  # a publishing job is started.
+  sanity-check:
     if: always()
 
     needs:
       - sanity
-      - units
-      - integration
 
     runs-on: ubuntu-latest
 
