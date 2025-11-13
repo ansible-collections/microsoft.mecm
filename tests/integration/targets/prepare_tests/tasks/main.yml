@@ -1,0 +1,5 @@
+---
+- name: Create the PS drive for the site
+  microsoft.mecm.site_ps_drive:
+    site_code: "{{ test_site_code }}"
+    state: present
