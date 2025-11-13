@@ -1,0 +1,8 @@
+---
+minor_changes:
+  - Add site_status_message_info module
+  - Add site_ps_drive module
+
+trivial:
+  - Update codeowners
+  - Update workflows related to testing
