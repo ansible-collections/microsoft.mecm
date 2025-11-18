@@ -1,3 +1,7 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
 DOCUMENTATION:
   module: site_status_message_info
   short_description: Gather status messages for a Configuration Manager site system components
