@@ -18,6 +18,7 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 # Map module parameters to cmdlet arguments
 $site_code = $module.Params.site_code
+$state = $module.Params.state
 
 # Setup PS environment
 Import-CMPsModule -module $module
@@ -25,8 +26,8 @@ Import-CMPsModule -module $module
 # Check if the site drive exists
 $drive_exists = Test-CMSiteDrive -SiteCode $site_code
 if (
-    ($module.Params.state -eq "present" -and $drive_exists) -or
-    ($module.Params.state -eq "absent" -and -not $drive_exists)
+    ($state -eq "present" -and $drive_exists) -or
+    ($state -eq "absent" -and -not $drive_exists)
 ) {
     $module.ExitJson()
 }
@@ -39,7 +40,7 @@ if ($module.CheckMode) {
 
 # Create or remove the site drive
 try {
-    if ($module.Params.state -eq "present") {
+    if ($state -eq "present") {
         $computer_name = Get-LocalComputerFQDN
         New-PSDrive -Name $site_code -PSProvider CMSite -Root $computer_name
     }
