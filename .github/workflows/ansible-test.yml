@@ -70,6 +70,7 @@ jobs:
     name: I (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }})
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         ansible:
           - devel
