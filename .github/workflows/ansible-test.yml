@@ -65,7 +65,7 @@ jobs:
   # https://github.com/ansible-collections/community.zabbix/tree/master/.github/workflows
 
   integration:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted]
 
     name: I (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }})
     strategy:
