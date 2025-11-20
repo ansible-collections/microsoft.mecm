@@ -34,11 +34,12 @@
 name: Ansible Test
 on:
   # Run CI against all pushes (direct commits, also merged PRs), Pull Requests
+  pull_request_target:
+    types: [opened, synchronize]
   push:
     branches:
       - main
       - stable-*
-  pull_request:
   # Run CI once per day (at 06:00 UTC)
   # This ensures that even if there haven't been commits that we are still
   # testing against latest version of ansible-test for each ansible-core
@@ -69,40 +70,20 @@ jobs:
     name: I (Ⓐ${{ matrix.ansible }}+py${{ matrix.python }})
     strategy:
       fail-fast: false
+      max-parallel: 1
       matrix:
         ansible:
           - devel
         # - milestone
-        python:
-          - "3.9"
-          - "3.10"
-          - "3.11"
-          - "3.12"
-          - "3.13"
         include:
           # Add new versions announced in
           # https://github.com/ansible-collections/news-for-maintainers in a timely manner,
           # consider dropping testing against EOL versions and versions you don't support.
           # ansible-core 2.16
           - ansible: stable-2.16
-            python: "3.9"
-          - ansible: stable-2.16
-            python: "3.12"
-          # ansible-core 2.17
           - ansible: stable-2.17
-            python: "3.9"
-          - ansible: stable-2.17
-            python: "3.12"
-          # ansible-core 2.18
           - ansible: stable-2.18
-            python: "3.9"
-          - ansible: stable-2.18
-            python: "3.13"
-          # ansible-core 2.19
           - ansible: stable-2.19
-            python: "3.9"
-          - ansible: stable-2.19
-            python: "3.13"
     steps:
       - name: >-
           Perform integration testing against
@@ -114,7 +95,10 @@ jobs:
         with:
           ansible-core-version: ${{ matrix.ansible }}
           # OPTIONAL command to run before invoking `ansible-test integration`
-          # pre-test-cmd:
+          pre-test-cmd: >-
+            make tests/integration/inventory.winrm &&
+            make install-integration-reqs ANSIBLE_COLLECTIONS_PATH="${{ github.workspace }}"
+
           target-python-version: ${{ matrix.python }}
           testing-type: windows-integration
           # Uncomment to configure a codecov token.
@@ -128,6 +112,10 @@ jobs:
           # which should improve CI performance. See limitations on
           # https://github.com/ansible-community/ansible-test-gh-action#pull-request-change-detection
           pull-request-change-detection: false
+        env:
+          MECM_HOSTNAME: ${{ secrets.MECM_HOSTNAME }}
+          MECM_USERNAME: ${{ secrets.MECM_USERNAME }}
+          MECM_PASSWORD: ${{ secrets.MECM_PASSWORD }}
 
   check: # This job does nothing and is only used for the branch protection
     # or multi-stage CI jobs, like making sure that all tests pass before
@@ -135,8 +123,6 @@ jobs:
     if: always()
 
     needs:
-      - sanity
-      - units
       - integration
 
     runs-on: ubuntu-latest
