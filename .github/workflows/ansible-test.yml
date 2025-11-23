@@ -71,6 +71,11 @@ jobs:
           MECM_USERNAME: ${{ secrets.MECM_USERNAME }}
           MECM_PASSWORD: ${{ secrets.MECM_PASSWORD }}
 
+      - name: Clean up
+        if: always()
+        run: |
+          rm -rf ./*
+
   check: # This job does nothing and is only used for the branch protection
     # or multi-stage CI jobs, like making sure that all tests pass before
     # a publishing job is started.
