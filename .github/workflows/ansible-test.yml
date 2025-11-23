@@ -101,10 +101,8 @@ jobs:
 
           target-python-version: ${{ matrix.python }}
           testing-type: windows-integration
-          # Uncomment to configure a codecov token.
-          # Check here whether a token is required: https://docs.codecov.com/docs/codecov-tokens
-          # Collections in the github.com/ansible-collections/ namespace usually do not need a token.
-          # codecov-token: ${{ secrets.CODECOV_TOKEN }}
+          # coverage for windows tests is not supported
+          coverage: never
           # OPTIONAL If your integration tests require code
           # from other collections, install them like this
           # test-deps: ansible.netcommon
