@@ -33,19 +33,26 @@ jobs:
         # Add new versions announced in
         # https://github.com/ansible-collections/news-for-maintainers in a timely manner,
         # consider dropping testing against EOL versions and versions you don't support.
-        ansible:
-          - devel
-          - stable-2.16
-          - stable-2.17
-          - stable-2.18
-          - stable-2.19
+        include:
+          - ansible: devel
+            python: 3.12
+          - ansible: stable-2.16
+            python: 3.11
+          - ansible: stable-2.17
+            python: 3.11
+          - ansible: stable-2.18
+            python: 3.11
+          - ansible: stable-2.19
+            python: 3.11
     steps:
-      - name: Update pip, git
-        if: runner.os == 'Linux' && startsWith(runner.name, 'ubuntu')
+      - name: Install python
         run: |
           set -euxo pipefail
-          sudo apt-get update
-          sudo apt-get install podman
+          if ! command -v python${{ matrix.python }}; then
+            sudo dnf install -y \
+              python${{ matrix.python }} \
+              python${{ matrix.python }}-pip
+          fi
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -54,7 +61,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          python3 -m venv .venv
+          python${{ matrix.python }} -m venv .venv
           source .venv/bin/activate
           pip install https://github.com/ansible/ansible/archive/${{ matrix.ansible }}.tar.gz
           make integration ANSIBLE_COLLECTIONS_PATH="${{ github.workspace }}"
