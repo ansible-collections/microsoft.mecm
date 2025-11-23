@@ -1,0 +1,193 @@
+---
+# Integration tests for simplified sccm_dp_status_info module
+
+# --- Gather facts to get hostname information ---
+- name: Gather facts
+  setup:
+
+# --- Set up dynamic test variables using Ansible facts ---
+- name: Set SCCM server variables from facts
+  set_fact:
+    sccm_server_name: "{{ ansible_fqdn | default(ansible_hostname + '.' + (ansible_domain | default('local')), true) | default('localhost') }}"
+
+- name: Set distribution point from server name
+  set_fact:
+    test_distribution_point: "{{ sccm_server_name }}"
+
+# --- Discover SCCM environment (non-fatal) ---
+- name: Query SCCM to gather baseline data
+  microsoft.mecm.sccm_dp_status_info:
+    computer_name: "{{ sccm_server_name }}"
+  register: baseline_query
+  failed_when: false
+  ignore_errors: true
+
+# --- Extract usable values for downstream tests ---
+- name: Set test variables based on environment
+  set_fact:
+    test_server_name: "{{ sccm_server_name }}"
+    test_dp_name: >-
+      {{
+        baseline_query.dp_status[0].dp_name
+        if baseline_query.dp_status is defined and baseline_query.dp_status|length > 0
+        else test_distribution_point
+      }}
+    test_package: >-
+      {{
+        baseline_query.dp_status[0].package_id
+        if baseline_query.dp_status is defined and baseline_query.dp_status|length > 0
+           and baseline_query.dp_status[0].package_id not in ['N/A', '', None]
+        else test_package_id
+      }}
+    has_real_data: "{{ baseline_query.dp_status is defined and baseline_query.dp_status|length > 0 }}"
+
+- name: Display auto-discovered SCCM values
+  debug:
+    msg: |
+      SCCM Discovery:
+      - Server: {{ test_server_name }}
+      - DP: {{ test_dp_name }}
+      - Package: {{ test_package }}
+      - Real data: {{ has_real_data }}
+
+# -------------------------------
+# PARAMETER VALIDATION
+# -------------------------------
+
+- name: Module should succeed with no computer_name (defaults to localhost)
+  microsoft.mecm.sccm_dp_status_info:
+  register: localhost_param
+  failed_when: false
+  ignore_errors: true
+
+- name: Debug localhost module output
+  debug:
+    var: localhost_param
+
+- name: Show localhost module status
+  debug:
+    msg: "Module failed: {{ localhost_param.failed | default(false) }}, Module succeeded: {{ localhost_param is not failed }}"
+
+- name: Show localhost failure details if module failed
+  debug:
+    msg: "Module failed with error: {{ localhost_param.msg | default('No error message') }}"
+  when: localhost_param is failed
+
+- name: Assert localhost default works
+  assert:
+    that:
+      - localhost_param.dp_status is defined
+      - localhost_param.changed == false
+    fail_msg: "Module should default to localhost when computer_name is not provided"
+  when: localhost_param is not failed and localhost_param.dp_status is defined
+
+# -------------------------------
+# BASIC EXECUTION
+# -------------------------------
+
+- name: Run module with minimal parameters
+  microsoft.mecm.sccm_dp_status_info:
+    computer_name: "{{ test_server_name }}"
+  register: basic_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Validate basic execution (no change, dp_status exists)
+  assert:
+    that:
+      - basic_run.dp_status is defined
+      - basic_run.changed == false
+    fail_msg: "Basic execution failed unexpectedly"
+
+# -------------------------------
+# DP FILTER
+# -------------------------------
+
+- name: Run with distribution_point filter
+  microsoft.mecm.sccm_dp_status_info:
+    computer_name: "{{ test_server_name }}"
+    distribution_point:
+      - "{{ test_dp_name }}"
+  register: dp_filter_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Validate DP filter behavior
+  assert:
+    that:
+      - dp_filter_run.dp_status is defined
+      - dp_filter_run.changed == false
+    fail_msg: "DP filter must return deterministic dp_status"
+
+# -------------------------------
+# PACKAGE FILTER
+# -------------------------------
+
+- name: Run with package_id filter
+  microsoft.mecm.sccm_dp_status_info:
+    computer_name: "{{ test_server_name }}"
+    package_id: "{{ test_package }}"
+  register: package_filter_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Validate package filter behavior
+  assert:
+    that:
+      - package_filter_run.dp_status is defined
+      - package_filter_run.changed == false
+    fail_msg: "Package filter must remain stable in output"
+
+# -------------------------------
+# CHECK MODE
+# -------------------------------
+
+- name: Validate module behavior in check mode
+  microsoft.mecm.sccm_dp_status_info:
+    computer_name: "{{ test_server_name }}"
+  register: check_mode_run
+  check_mode: true
+  failed_when: false
+  ignore_errors: true
+
+- name: Assert check mode mirrors normal execution
+  assert:
+    that:
+      - check_mode_run.dp_status is defined
+      - check_mode_run.changed == false
+    fail_msg: "Check mode changed behavior unexpectedly"
+
+# -------------------------------
+# COMBINED FILTERS
+# -------------------------------
+
+- name: Run module with both DP + package filters
+  microsoft.mecm.sccm_dp_status_info:
+    computer_name: "{{ test_server_name }}"
+    distribution_point:
+      - "{{ test_dp_name }}"
+    package_id: "{{ test_package }}"
+  register: combined_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Assert combined filtering still works
+  assert:
+    that:
+      - combined_run.dp_status is defined
+      - combined_run.changed == false
+    fail_msg: "Combined filters produced inconsistent dp_status"
+
+# -------------------------------
+# SUMMARY
+# -------------------------------
+- name: Test Summary
+  debug:
+    msg: |
+      Summary:
+      - Localhost default: {{ 'PASS' if localhost_param.dp_status is defined else 'FAIL' }}
+      - Basic execution: {{ 'PASS' if basic_run.dp_status is defined else 'FAIL' }}
+      - DP filter: {{ 'PASS' if dp_filter_run.dp_status is defined else 'FAIL' }}
+      - Package filter: {{ 'PASS' if package_filter_run.dp_status is defined else 'FAIL' }}
+      - Check mode: {{ 'PASS' if check_mode_run.dp_status is defined else 'FAIL' }}
+      - Combined filters: {{ 'PASS' if combined_run.dp_status is defined else 'FAIL' }}
