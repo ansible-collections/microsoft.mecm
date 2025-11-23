@@ -1,5 +1,6 @@
 {
   "recommendations": [
-    "redhat.ansible"
+    "redhat.ansible",
+    "ms-vscode.powershell",
   ]
 }

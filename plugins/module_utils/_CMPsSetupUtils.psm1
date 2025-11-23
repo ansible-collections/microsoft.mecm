@@ -58,3 +58,21 @@ Function ConvertTo-SeverityString {
 
     return "$SeverityCode"
 }
+
+
+Function ConvertTo-CmdletParamsIfNotNull {
+    param (
+        [Parameter(Mandatory = $true)][hashtable]$moduleParamMapping
+    )
+
+    $cmdletParams = @{}
+    foreach ($param in $moduleParamMapping.Keys) {
+        $paramValue = $moduleParamMapping[$param].value
+        $cmdletParamName = $moduleParamMapping[$param].cmdletParamName
+        if ($null -ne $paramValue) {
+            $cmdletParams[$cmdletParamName] = $paramValue
+        }
+    }
+
+    return $cmdletParams
+}
