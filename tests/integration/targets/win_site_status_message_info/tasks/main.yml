@@ -16,7 +16,7 @@
   ansible.builtin.assert:
     that:
       - _get_component_status_messages.site_status_messages | length > 0
-      - _get_error_status_messages.site_status_messages | length > 0
+      - _get_error_status_messages.site_status_messages | length != _get_component_status_messages.site_status_messages | length
       - _get_component_status_messages is not ansible.builtin.changed
       - _get_error_status_messages is not ansible.builtin.changed
       - >-
