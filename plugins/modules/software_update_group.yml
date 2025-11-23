@@ -1,0 +1,85 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: software_update_group
+  short_description: Create, update, or delete software update groups in a Configuration Manager site
+  description:
+    - This module creates, updates, or deletes software update groups for a Configuration Manager site.
+    - You can also add or remove updates from a software update group.
+
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+
+  options:
+    name:
+      description:
+        - Specify the name to use when searching for the software update group.
+        - The name option is required when creating a new software update group.
+        - If this option is supplied with ID for an existing software update group, then the group
+          name will be updated to match this value if needed.
+        - At least one of the name or id options is required.
+      type: str
+      required: false
+    id:
+      description:
+        - Specify the ID of the software update group to get information about.
+        - If this option is supplied with name, it takes precedence for identifying the software update group.
+        - At least one of the name or id options is required.
+      type: str
+      required: false
+    description:
+      description:
+        - Specify the description for the software update group.
+      type: str
+      required: false
+    state:
+      description:
+        - Specify if the software update group should be present or absent.
+      type: str
+      required: false
+      choices:
+        - present
+        - absent
+      default: present
+
+  author:
+    - Ansible Cloud Team (@ansible-collections)
+
+EXAMPLES: |
+  # Create the PS drive for the site "XYZ"
+  - name: Create the PS drive for the site "XYZ"
+    microsoft.mecm.site_ps_drive:
+      site_code: XYZ
+      state: present
+
+  - name: Create a new software update group with the name "Windows 10" and description "Windows 10 update group"
+    microsoft.mecm.software_update_group:
+      site_code: "XYZ"
+      name: "Windows 10"
+      description: "Windows 10 update group"
+      state: present
+
+  - name: Update a group name
+    microsoft.mecm.software_update_group:
+      site_code: "XYZ"
+      name: "Windows 10 New"
+      id: "1234567890"
+
+  - name: Remove a group
+    microsoft.mecm.software_update_group:
+      site_code: "XYZ"
+      id: "1234567890"
+      state: absent
+
+RETURN:
+  software_update_group:
+    description: Identifying information about the software update group.
+    returned: always
+    type: dict
+    sample: |-
+      {
+        "name": "Windows 10",
+        "id": "16777519"
+      }

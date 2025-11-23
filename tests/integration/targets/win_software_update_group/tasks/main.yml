@@ -1,0 +1,87 @@
+---
+- name: Test and cleanup
+  block:
+    - name: Create a new software update group
+      microsoft.mecm.software_update_group: &create_software_update_group
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_software_update_group_name }}"
+        description: Test group created by integration test
+        state: present
+      register: _create_sug
+
+    - name: Create a new software update group - idempotence
+      microsoft.mecm.software_update_group: *create_software_update_group
+      register: _create_sug_idempotence
+
+    - name: Gather Info
+      microsoft.mecm.software_update_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_software_update_group_name }}"
+      register: _get_sug_by_name_info
+
+    - name: Check creation
+      ansible.builtin.assert:
+        that:
+          - _create_sug is ansible.builtin.changed
+          - _create_sug_idempotence is not ansible.builtin.changed
+          - _get_sug_by_name_info.software_update_groups | length == 1
+          - _get_sug_by_name_info.software_update_groups[0].name == test_software_update_group_name
+          - _get_sug_by_name_info.software_update_groups[0].id == _create_sug.software_update_group.id
+
+    - name: Update the software update group
+      microsoft.mecm.software_update_group: &update_software_update_group
+        site_code: "{{ test_site_code }}"
+        id: "{{ _create_sug.software_update_group.id }}"
+        name: "{{ test_software_update_group_new_name }}"
+        description: Test group updated by integration test
+      register: _update_sug
+
+    - name: Update the software update group - idempotence
+      microsoft.mecm.software_update_group: *update_software_update_group
+      register: _update_sug_idempotence
+
+    - name: Gather Info by ID
+      microsoft.mecm.software_update_group_info:
+        site_code: "{{ test_site_code }}"
+        id: "{{ _create_sug.software_update_group.id }}"
+      register: _get_sug_by_id_info
+
+    - name: Check update
+      ansible.builtin.assert:
+        that:
+          - _update_sug is ansible.builtin.changed
+          - _update_sug_idempotence is not ansible.builtin.changed
+          - _get_sug_by_id_info.software_update_groups | length == 1
+          - _get_sug_by_id_info.software_update_groups[0].name == test_software_update_group_new_name
+          - _get_sug_by_id_info.software_update_groups[0].id == _create_sug.software_update_group.id
+
+    - name: Remove the software update group
+      microsoft.mecm.software_update_group: &remove_software_update_group
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_software_update_group_new_name }}"
+        state: absent
+      register: _remove_sug
+
+    - name: Remove the software update group - idempotence
+      microsoft.mecm.software_update_group: *remove_software_update_group
+      register: _remove_sug_idempotence
+
+    - name: Check removal
+      ansible.builtin.assert:
+        that:
+          - _remove_sug is ansible.builtin.changed
+          - _remove_sug_idempotence is not ansible.builtin.changed
+
+  always:
+    - name: Remove the software update group by original name
+      microsoft.mecm.software_update_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_software_update_group_name }}"
+        state: absent
+      when: _create_sug.software_update_group.id is not defined
+    - name: Remove the software update group by ID
+      microsoft.mecm.software_update_group:
+        site_code: "{{ test_site_code }}"
+        id: "{{ _create_sug.software_update_group.id }}"
+        state: absent
+      when: _create_sug.software_update_group.id is defined
