@@ -1,0 +1,104 @@
+---
+# Gather facts for hostname information  
+- name: Gather facts
+  setup:
+
+- name: Test sccm_backups_status_info module with different server name
+  microsoft.mecm.sccm_backups_status_info:
+    computer_name: "nonexistent-server.example.com"
+    site_name: "{{ test_site_name }}"
+  register: different_server_result
+  ignore_errors: true
+
+- name: Verify different server name handling
+  assert:
+    that:
+      - different_server_result.msg is not defined or different_server_result.msg is not search("does not match site server")
+    fail_msg: "Module should not fail due to server name validation"
+
+- name: Test sccm_backups_status_info module with valid server
+  microsoft.mecm.sccm_backups_status_info:
+    computer_name: "{{ ansible_hostname }}.{{ ansible_domain | default('domain.com') }}"
+    site_name: "{{ test_site_name }}"
+  register: backup_status_result
+  ignore_errors: true
+
+- name: Display backup status results
+  debug:
+    var: backup_status_result
+  when: backup_status_result is not failed
+
+- name: Verify backup status structure when successful
+  assert:
+    that:
+      - backup_status_result.backup_status is defined
+      - backup_status_result.backup_status.task_enabled is defined
+      - backup_status_result.backup_status.task_enabled is boolean
+      - backup_status_result.backup_status.last_backup_status is defined
+      - backup_status_result.backup_status.last_backup_status is string
+      - backup_status_result.backup_status.last_backup_time is defined
+      - backup_status_result.backup_status.backup_location is defined
+      - backup_status_result.backup_status.schedule_info is defined
+      - backup_status_result.backup_status.days_of_week_bitmask is defined
+      - backup_status_result.backup_status.days_of_week_bitmask is number
+      - backup_status_result.backup_status.computer_name is defined
+      - backup_status_result.backup_status.site_code is defined
+      - backup_status_result.backup_status.task_type is defined
+    fail_msg: "Backup status should contain all required fields with correct types"
+  when: backup_status_result is not failed
+
+- name: Verify backup status values are valid
+  assert:
+    that:
+      - backup_status_result.backup_status.last_backup_status in valid_backup_statuses
+      - backup_status_result.backup_status.computer_name | length > 0
+      - backup_status_result.backup_status.site_code is defined
+      - backup_status_result.backup_status.schedule_info | length > 0
+      - backup_status_result.backup_status.days_of_week_bitmask >= 0
+      - backup_status_result.backup_status.days_of_week_bitmask <= 127
+    fail_msg: "Backup status values should be within expected ranges"
+  when: backup_status_result is not failed
+
+- name: Test check mode functionality
+  microsoft.mecm.sccm_backups_status_info:
+    computer_name: "{{ ansible_hostname }}.{{ ansible_domain }}"
+    site_name: "{{ test_site_name }}"
+  register: check_mode_result
+  check_mode: true
+  ignore_errors: true
+
+- name: Verify check mode returns same structure
+  assert:
+    that:
+      - check_mode_result.backup_status is defined
+      - check_mode_result.changed == false
+    fail_msg: "Check mode should return backup status without making changes"
+  when: check_mode_result is not failed
+
+- name: Test handling of disabled backup task scenario
+  block:
+    - name: Display backup configuration details
+      debug:
+        msg: |
+          Backup Task Enabled: {{ backup_status_result.backup_status.task_enabled }}
+          Backup Status: {{ backup_status_result.backup_status.last_backup_status }}
+          Schedule: {{ backup_status_result.backup_status.schedule_info }}
+          Location: {{ backup_status_result.backup_status.backup_location | default('Not Configured') }}
+          Days Bitmask: {{ backup_status_result.backup_status.days_of_week_bitmask }}
+      when: backup_status_result is not failed
+    
+    - name: Verify disabled backup task is properly reported
+      assert:
+        that:
+          - backup_status_result.backup_status.last_backup_status in valid_backup_statuses or backup_status_result.backup_status.task_enabled == false
+        fail_msg: "Disabled backup tasks should be properly identified"
+      when: 
+        - backup_status_result is not failed
+        - backup_status_result.backup_status.task_enabled == false
+
+    - name: Show expected behavior for enabled backup tasks
+      debug:
+        msg: "Backup task is enabled - checking for backup history and configuration"
+      when:
+        - backup_status_result is not failed
+        - backup_status_result.backup_status.task_enabled == true

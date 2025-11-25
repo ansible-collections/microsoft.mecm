@@ -1,0 +1,145 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: sccm_backups_status_info
+  short_description: Retrieve backup status information from SCCM primary site server
+  description:
+    - Retrieves comprehensive backup status information for an SCCM primary site server to verify disaster recovery readiness.
+    - Returns backup task configuration, schedule information, last backup result, and execution history.
+  version_added: "0.1.0"
+  requirements:
+    - SCCM PowerShell module (ConfigurationManager)
+    - Administrative access to SCCM site server
+    - WMI access to SCCM site database
+  options:
+    computer_name:
+      description:
+        - The FQDN of the SCCM primary site server computer name to query backup status from.
+        - Defaults to localhost if not specified.
+      required: false
+      type: str
+    backup_task_name:
+      description:
+        - The name of the SCCM backup maintenance task to query.
+        - Allows customization for environments where the backup task has been renamed.
+      required: false
+      type: str
+      default: "Backup SMS Site Server"
+    site_name:
+      description:
+        - The SCCM site code (usually 3 characters) to connect to.
+        - This is the primary site code where the backup task is configured.
+      required: true
+      type: str
+  notes:
+    - This module requires the SCCM Console to be installed on the target machine.
+    - The module uses Get-CMSiteMaintenanceTask cmdlet and WMI queries to gather comprehensive backup information.
+    - This is an info module that does not make any changes to the system.
+    - "B(Performance): Module uses WMI queries which may have slight performance impact in large environments."
+    - "B(Permissions): Requires administrative access to query SCCM maintenance tasks and site status."
+    - "B(Disabled Backups): The module properly handles and reports when backup tasks are disabled or never executed."
+    - "B(Schedule Information): Provides human-readable schedule details converted from SCCM DaysOfWeek bitmask (127=Daily, 64=Sunday, etc.)."
+  author:
+    - "Ansible Community (@ansible-community)"
+
+EXAMPLES: |
+  - name: Check backup status of local SCCM server
+    microsoft.mecm.sccm_backups_status_info:
+      site_name: "PS1"
+
+  - name: Check backup status of remote primary site server
+    microsoft.mecm.sccm_backups_status_info:
+      computer_name: "sccm-primary.domain.com"
+      site_name: "PS1"
+
+  - name: Verify backup task is enabled and recent
+    microsoft.mecm.sccm_backups_status_info:
+      computer_name: "{{ sccm_server }}"
+      site_name: "{{ sccm_site_code }}"
+    register: backup_info
+
+  - name: Check custom backup task
+    microsoft.mecm.sccm_backups_status_info:
+      site_name: "PS1"
+      backup_task_name: "Custom Backup Task"
+
+  - name: Ensure backup is configured and successful
+    assert:
+      that:
+        - backup_info.backup_status.task_enabled == true
+        - backup_info.backup_status.last_backup_status == "Success"
+        - backup_info.backup_status.last_backup_time | length > 0
+        - backup_info.backup_status.backup_location | length > 0
+      fail_msg: "SCCM site backup is not properly configured or has failed"
+
+  - name: Alert if backup is older than 24 hours
+    fail:
+      msg: "Last backup is more than 24 hours old: {{ backup_info.backup_status.last_backup_time }}"
+    when: 
+      - backup_info.backup_status.last_backup_time | length > 0
+      - (ansible_date_time.epoch | int) - (backup_info.backup_status.last_backup_time | to_datetime('%Y-%m-%dT%H:%M:%SZ') | int) > 86400
+
+  - name: Display backup status summary
+    debug:
+      msg: |
+        SCCM Site: {{ backup_info.backup_status.site_code }}
+        Backup Task Enabled: {{ backup_info.backup_status.task_enabled }}
+        Backup Schedule: {{ backup_info.backup_status.schedule_info }}
+        Backup Location: {{ backup_info.backup_status.backup_location | default('Not Configured') }}
+        Last Backup Status: {{ backup_info.backup_status.last_backup_status }}
+        Last Backup Time: {{ backup_info.backup_status.last_backup_time | default('Never') }}
+
+RETURN:
+  backup_status:
+    description: SCCM site backup status information
+    returned: always
+    type: dict
+    contains:
+      task_enabled:
+        description: Whether the site backup maintenance task is enabled
+        type: bool
+        returned: always
+        sample: true
+      last_backup_status:
+        description: Status of the last backup operation
+        type: str
+        returned: always
+        sample: "Success"
+        choices: ["Success", "Failed", "Warning", "Unknown", "Task Disabled", "No Backup History"]
+      last_backup_time:
+        description: ISO 8601 timestamp of the last backup operation
+        type: str
+        returned: always
+        sample: "2024-03-15T02:30:00Z"
+      backup_location:
+        description: Configured backup destination path or device
+        type: str
+        returned: always
+        sample: "D:\\ConfigMgrBackup"
+      schedule_info:
+        description: Human-readable backup schedule information
+        type: str
+        returned: always
+        sample: "Daily"
+      days_of_week_bitmask:
+        description: Numeric bitmask representing scheduled days (127=daily, 64=Sunday, 1=Monday, etc.)
+        type: int
+        returned: always
+        sample: 127
+      computer_name:
+        description: FQDN of the queried SCCM site server computer name
+        type: str
+        returned: always
+        sample: "sccm-primary.domain.com"
+      site_code:
+        description: Three-character SCCM site code
+        type: str
+        returned: always
+        sample: "PS1"
+      task_type:
+        description: SCCM maintenance task type identifier
+        type: int
+        returned: always
+        sample: 1

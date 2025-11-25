@@ -45,6 +45,53 @@ Function Test-CMSiteDrive {
 }
 
 
+Function Test-CMSiteNameAndConnect {
+    <#
+    .SYNOPSIS
+    Verifies the provided site name/code and establishes connection to the site drive.
+
+    .DESCRIPTION
+    This function validates that the specified SCCM site code exists and is accessible,
+    then sets the PowerShell location to the site drive for subsequent SCCM operations.
+
+    .PARAMETER SiteCode
+    The SCCM site code to verify and connect to.
+
+    .PARAMETER Module
+    The Ansible module object for error reporting.
+
+    .RETURNS
+    Nothing on success, calls module.FailJson with appropriate error on failure.
+    #>
+    param (
+        [Parameter(Mandatory = $true)][string]$SiteCode,
+        [Parameter(Mandatory = $true)][object]$Module
+    )
+
+    # Verify the site drive exists
+    if (-not (Test-CMSiteDrive -SiteCode $SiteCode)) {
+        $Module.FailJson("SCCM site code '$SiteCode' not found or not accessible. " +
+            "Verify the site code and ensure the Configuration Manager Console is properly installed.")
+    }
+
+    # Set location to the site drive
+    try {
+        Set-Location -LiteralPath "$($SiteCode):" -ErrorAction Stop
+    }
+    catch {
+        $Module.FailJson("Unable to access SCCM site drive '$SiteCode': $($_.Exception.Message)")
+    }
+
+    # Verify site connectivity by testing basic site operations
+    try {
+        Get-CMSite -SiteCode $SiteCode -ErrorAction Stop | Out-Null
+    }
+    catch {
+        $Module.FailJson("Unable to connect to SCCM site '$SiteCode': $($_.Exception.Message)")
+    }
+}
+
+
 Function ConvertTo-SeverityString {
     param (
         [Parameter(Mandatory = $true)][string]$SeverityCode

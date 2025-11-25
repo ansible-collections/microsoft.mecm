@@ -1,0 +1,17 @@
+---
+# Default test variables for win_sccm_backups_status_info module testing
+
+# SCCM Site Configuration
+test_site_name: "eco"
+
+# Expected backup status values for validation
+valid_backup_statuses:
+  - "Success"
+  - "Failed" 
+  - "Warning"
+  - "Unknown"
+  - "Task Disabled"
+  - "No Backup History"
+
+# Default backup task name for testing
+default_backup_task_name: "Backup SMS Site Server"
