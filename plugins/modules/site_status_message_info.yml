@@ -1,0 +1,107 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: site_status_message_info
+  short_description: Gather status messages for a Configuration Manager site system components
+  description:
+    - This module gets status messages for a Configuration Manager site system component.
+    - A status message is a message that a Configuration Manager component generates that contains
+      information about the success, failure, or operation of site system components.
+    - Configuration Manager stores status messages in a Configuration Manager site database.
+      You can view status messages directly in the Status Message Viewer.
+
+  notes:
+    - This module cannot collect the description messages for each status message, due to a limitation
+      in the Configuration Manager PowerShell module. The status message ID can be used to correlate
+      the returned messages with the description messages.
+
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+
+  options:
+    computer_name:
+      description:
+        - Specify the fully qualified domain name (FQDN) of the server that hosts the site system role.
+        - If this is not specified, the host running the module is used.
+        - If this is specified, the host running the module must be able to resolve and access the server.
+      type: str
+      required: false
+    severity:
+      description:
+        - The severity of the status messages you want to get.
+      type: str
+      choices: [all, error, warning, information]
+      required: false
+      default: all
+    search_start_time:
+      description:
+        - The start time of the search for status messages.
+        - If this is not specified, the search will start from 1 day ago.
+        - The format must be a valid powershell date string. It should be parsable by the Get-Date cmdlet.
+          Some examples are "2025-01-01", "2025-01-01 12:00:00 AM", "2025-01-01 12 PM"
+      type: str
+      required: false
+    component:
+      description:
+        - Specify a component by which to filter the status messages.
+        - Some examples are "SMS_SITE_COMPONENT_MANAGER", "SMS_NOTIFICATION_SERVER", "SMS_NOTIFICATION_POINT"
+        - Be aware specifying an invalid component name does not cause an error. Instead, no status messages are returned.
+      type: str
+      required: false
+
+  author:
+    - Ansible Cloud Team (@ansible-collections)
+
+EXAMPLES: |
+  # Create the PS drive for the site "XYZ"
+  - name: Create the PS drive for the site "XYZ"
+    microsoft.mecm.site_ps_drive:
+      site_code: XYZ
+      state: present
+
+  - name: Gather status messages for the site "XYZ"
+    microsoft.mecm.site_status_message_info:
+      site_code: XYZ
+      severity: all
+      search_start_time: 2025-01-01
+
+  - name: Gather error messages only
+    microsoft.mecm.site_status_message_info:
+      site_code: XYZ
+      severity: error
+
+  - name: Gather messages from specific time onward
+    microsoft.mecm.site_status_message_info:
+      site_code: XYZ
+      search_start_time: 2025-11-12 01:11:11 PM
+
+  - name: Gather messages from a specific server
+    microsoft.mecm.site_status_message_info:
+      site_code: XYZ
+      computer_name: server01.example.com
+
+  - name: Gather messages about a specific component
+    microsoft.mecm.site_status_message_info:
+      site_code: XYZ
+      component: SMS_SITE_COMPONENT_MANAGER
+
+RETURN:
+  site_status_messages:
+    description: List of status messages for the site.
+    returned: always
+    type: list
+    elements: dict
+    sample: |-
+      [
+          {
+              "component": "SMS_SITE_COMPONENT_MANAGER",
+              "computer_name": "WIN-1111111.foo.contoso.com",
+              "message_id": 4909,
+              "module": "SMS Server",
+              "severity": "error",
+              "site_code": "ECO",
+              "timestamp": "2025-11-11 09:17:06"
+          }
+      ]

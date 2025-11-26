@@ -1,0 +1,9 @@
+---
+- name: Create the PS drive for the site
+  microsoft.mecm.site_ps_drive:
+    site_code: "{{ test_site_code }}"
+    state: present
+
+- name: Generate unique test ID
+  ansible.builtin.set_fact:
+    unique_test_id: "test-{{ lookup('password', '/dev/null chars=ascii_letters,digit length=6') | lower }}"

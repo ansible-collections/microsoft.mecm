@@ -22,3 +22,4 @@ issues: https://github.com/ansible-collections/microsoft.mecm/issues
 build_ignore:
   - .gitignore
   - changelogs/.plugin-cache.yaml
+  - tests/integration/inventory.winrm

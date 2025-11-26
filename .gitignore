@@ -1,6 +1,9 @@
 /tests/output/
 /changelogs/.plugin-cache.yaml
 
+# Integration tests
+tests/integration/inventory.winrm
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
