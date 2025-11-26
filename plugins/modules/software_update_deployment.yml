@@ -3,8 +3,8 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 DOCUMENTATION:
-  module: software_update_deployment_info
-  short_description: Gather information about
+  module: software_update_deployment
+  short_description: Create, update, or delete a software update deployment.
   description:
     - This module creates, updates, or deletes a software update deployment.
 
@@ -19,6 +19,7 @@ DOCUMENTATION:
     - There is no way to validate all of the current properties of the deployment. By default, this module
       will always update the deployment to use the desired properties, even if the current state matches the
       desired state. See the O(only_use_verifiable_properties_for_change_detection) option for more details.
+
   options:
     state:
       description:
