@@ -1,0 +1,134 @@
+---
+- name: Test
+  block:
+    - name: Create software update deployment
+      microsoft.mecm.software_update_deployment: &create-deploy
+        site_code: "{{ test_site_code }}"
+        only_use_verifiable_properties_for_change_detection: true
+        state: present
+        name: "{{ unique_test_id }} Test Deployment"
+        software_update_name: "{{ test_software_update_name }}"
+        collection_name: "{{ test_collection_name }}"
+        allow_restarts: true
+        allow_metered_network_downloads: true
+        allow_remote_distribution_point_downloads: true
+        allow_default_distribution_point_downloads: true
+        available_time: 11:00:00 AM
+        expiration_time: 11:00:00 PM
+        deployment_type: "required"
+        description: "{{ unique_test_id }} Test Description"
+        disable_operations_manager_alerts: true
+        generate_operations_manager_alert_on_failure: true
+        generate_success_threshold_alert: true
+        success_threshold: 95
+        allow_microsoft_update_downloads: true
+        allow_branch_cache_downloads: true
+        enabled: true
+        require_post_reboot_full_scan: true
+        restart_servers_if_needed: true
+        restart_workstations_if_needed: true
+        send_wake_up_packet: true
+        enable_soft_deadline: true
+        deployment_timezone: "utc"
+        user_notification_method: "DisplayAll"
+        deployment_verbosity: "AllMessages"
+        deploy_with_no_package: true
+      register: _create_deploy
+
+    - name: Create software update deployment - idempotence
+      microsoft.mecm.software_update_deployment: *create-deploy
+      register: _create_deploy_idempotence
+
+    - name: Lookup software update deployment
+      microsoft.mecm.software_update_deployment_info:
+        site_code: "{{ test_site_code }}"
+        software_update_name: "{{ test_software_update_name }}"
+        collection_name: "{{ test_collection_name }}"
+      register: _lookup_deploy
+
+    - name: Assert create tasks
+      ansible.builtin.assert:
+        that:
+          - _create_deploy is ansible.builtin.changed
+          - _create_deploy_idempotence is not ansible.builtin.changed
+          - _deploy_lookup.name == unique_test_id + " Test Deployment"
+          - _deploy_lookup.allow_installation_outside_maintenance_window == true
+          - _deploy_lookup.persist_on_write_filter_device == true
+          - _deploy_lookup.generate_operations_manager_alert_on_failure == true
+          - _deploy_lookup.require_post_reboot_full_scan == true
+          - _deploy_lookup.enable_soft_deadline == true
+          - _deploy_lookup.use_branch_cache == true
+          - _deploy_lookup.send_wake_up_packet == true
+          - _deploy_lookup.disable_operations_manager_alerts == true
+      vars:
+        _deploy_lookup: "{{ _lookup_deploy.software_update_deployments[0]}}"
+
+    - name: Update software update deployment
+      microsoft.mecm.software_update_deployment: &update-deploy
+        software_update_name: "{{ test_software_update_name }}"
+        collection_name: "{{ test_collection_name }}"
+        only_use_verifiable_properties_for_change_detection: true
+        site_code: "{{ test_site_code }}"
+        state: present
+        name: "{{ unique_test_id }} Test Deployment - Update"
+      register: _update_deploy
+
+    - name: Update software update deployment - idempotence
+      microsoft.mecm.software_update_deployment: *update-deploy
+      register: _update_deploy_idempotence
+
+    - name: Lookup software update deployment by ID
+      microsoft.mecm.software_update_deployment_info:
+        site_code: "{{ test_site_code }}"
+        id: "{{ _create_deploy.software_update_deployment.id }}"
+      register: _lookup_deploy_by_id
+
+    - name: Update software update deployment - force
+      microsoft.mecm.software_update_deployment:
+        only_use_verifiable_properties_for_change_detection: false
+        id: "{{ _create_deploy.software_update_deployment.id }}"
+        site_code: "{{ test_site_code }}"
+        state: present
+        name: "{{ unique_test_id }} Test Deployment - Update"
+      register: _update_deploy_force
+
+    - name: Assert update tasks
+      ansible.builtin.assert:
+        that:
+          - _update_deploy.software_update_deployment.id == _create_deploy.software_update_deployment.id
+          - _update_deploy is ansible.builtin.changed
+          - _update_deploy_idempotence is not ansible.builtin.changed
+          - _update_deploy_force is ansible.builtin.changed
+          - _lookup_deploy_by_id.software_update_deployments[0].name == unique_test_id + " Test Deployment - Update"
+
+    - name: Remove software update deployment
+      microsoft.mecm.software_update_deployment:
+        site_code: "{{ test_site_code }}"
+        state: absent
+        id: "{{ _create_deploy.software_update_deployment.id }}"
+
+    - name: Lookup software update deployment
+      microsoft.mecm.software_update_deployment_info:
+        site_code: "{{ test_site_code }}"
+        id: "{{ _create_deploy.software_update_deployment.id }}"
+      register: _lookup_deploy_by_id_removed
+
+    - name: Assert remove tasks
+      ansible.builtin.assert:
+        that:
+          - _lookup_deploy_by_id_removed.software_update_deployments | length == 0
+
+  always:
+    - name: Delete software update deployment by ID
+      microsoft.mecm.software_update_deployment:
+        site_code: "{{ test_site_code }}"
+        state: absent
+        id: "{{ _create_deploy.software_update_deployment.id }}"
+      when: _create_deploy.software_update_deployment.id is defined and _create_deploy.software_update_deployment.id != ''
+    - name: Delete software update deployment by other identifiers
+      microsoft.mecm.software_update_deployment:
+        site_code: "{{ test_site_code }}"
+        state: absent
+        software_update_name: "{{ test_software_update_name }}"
+        collection_name: "{{ test_collection_name }}"
+      when: _create_deploy.software_update_deployment.id is not defined or _create_deploy.software_update_deployment.id == ''
