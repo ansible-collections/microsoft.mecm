@@ -1,0 +1,123 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: software_update_deployment_info
+  short_description: Gather information about one or more software update deployments.
+  description:
+    - This module gathers information about one or more software update deployments.
+
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+
+  options:
+    id:
+      description:
+        - The ID of the software update deployment to query.
+      type: str
+      required: false
+    software_update_group_id:
+      description:
+        - The ID of the software update group to use to query for deployments.
+        - Only one of O(software_update_group_id), O(software_update_group_name), O(software_update_id),
+          or O(software_update_name) can be specified.
+      type: str
+      required: false
+    software_update_group_name:
+      description:
+        - The name of the software update group to use to query for deployments.
+        - Only one of O(software_update_group_id), O(software_update_group_name), O(software_update_id),
+          or O(software_update_name) can be specified.
+      type: str
+      required: false
+    software_update_id:
+      description:
+        - The ID of the software update to use to query for deployments.
+        - Only one of O(software_update_group_id), O(software_update_group_name), O(software_update_id),
+          or O(software_update_name) can be specified.
+      type: str
+      required: false
+    software_update_name:
+      description:
+        - The name of the software update to use to query for deployments.
+        - Only one of O(software_update_group_id), O(software_update_group_name), O(software_update_id),
+          or O(software_update_name) can be specified.
+      type: str
+      required: false
+    collection_name:
+      description:
+        - The name of the collection of clients to use to query for deployments.
+        - Only one of O(collection_name), O(collection_id) can be specified.
+      type: str
+      required: false
+    collection_id:
+      description:
+        - The ID of the collection of clients to use to query for deployments.
+        - Only one of O(collection_name), O(collection_id) can be specified.
+      type: str
+      required: false
+
+  author:
+    - Ansible Cloud Team (@ansible-collections)
+
+EXAMPLES: |
+  # This should return a single deployment object, but MECM does not prevent you from creating multiple deployments with the same
+  # software update and collection, so if this exists in your environment you will get multiple deployment objects.
+  - name: Lookup software update deployment
+    microsoft.mecm.software_update_deployment_info:
+      site_code: "{{ test_site_code }}"
+      software_update_name: "{{ test_software_update_name }}"
+      collection_name: "{{ test_collection_name }}"
+
+  # This will always return a single deployment object.
+  - name: Lookup software update deployment by ID
+    microsoft.mecm.software_update_deployment_info:
+      site_code: "{{ test_site_code }}"
+      id: "{{ _lookup_deploy.software_update_deployments[0].id }}"
+
+  - name: Lookup all deployments with a specific software update
+    microsoft.mecm.software_update_deployment_info:
+      site_code: "{{ test_site_code }}"
+      software_update_name: "{{ test_software_update_name }}"
+
+  - name: Lookup all deployments with a specific collection
+    microsoft.mecm.software_update_deployment_info:
+      site_code: "{{ test_site_code }}"
+      collection_name: "{{ test_collection_name }}"
+
+RETURN:
+  software_update_deployment:
+    description: Identifiers for the software update deployment.
+    returned: always
+    type: list
+    elements: dict
+    sample: |-
+      [
+        {
+          "allow_installation_outside_maintenance_window": true,
+          "assigned_software_update_ids": [
+              16777515
+          ],
+          "available_time": "2025-11-25 11:00:00 -8",
+          "collection_id": "SMS000KM",
+          "contains_expired_updates": false,
+          "creation_time": "2025-11-25 13:06:17 -8",
+          "deployment_type": "required",
+          "description": "Test Description",
+          "disable_operations_manager_alerts": true,
+          "enable_soft_deadline": true,
+          "enabled": true,
+          "expiration_time": "",
+          "generate_operations_manager_alert_on_failure": true,
+          "id": "{9E4AB1D7-2322-4E9B-883C-510C25DE6DF1}",
+          "last_modified_by": "Contoso\\Administrator",
+          "last_modified_time": "2025-11-25 13:06:18 -8",
+          "name": "Test Deployment",
+          "persist_on_write_filter_device": true,
+          "require_post_reboot_full_scan": true,
+          "send_wake_up_packet": true,
+          "timezone": "utc",
+          "use_branch_cache": true
+        }
+      ]

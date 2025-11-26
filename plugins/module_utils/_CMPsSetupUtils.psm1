@@ -105,3 +105,66 @@ Function ConvertTo-SeverityString {
 
     return "$SeverityCode"
 }
+
+
+Function Format-ModuleParamAsCmdletArgument {
+    # Takes a series of hastable/maps to format module parameters as cmdlet arguments.
+    # The direct_mapped_params map is used to map module parameters to cmdlet arguments, one to one.
+    # The datetime_params map is used to map module parameter strings to datetime objects.
+    # The switch_params map is used to map module parameter booleans to switch values.
+    # Each hashtable should have the module parameter name as the key, and the cmdlet argument name as the value.
+    param (
+        [Parameter(Mandatory = $true)][object]$module,
+        [Parameter(Mandatory = $true)][hashtable]$direct_mapped_params,
+        [Parameter(Mandatory = $true)][hashtable]$datetime_params,
+        [Parameter(Mandatory = $true)][hashtable]$switch_params
+    )
+
+    $cmdlet_arguments = @{}
+    # map module params that are directly mapped to cmdlet arguments
+    foreach ($param in $direct_mapped_params.Keys) {
+        $cmdlet_option = $direct_mapped_params.$param
+        if ($null -ne $module.Params.$param) {
+            $cmdlet_arguments.$cmdlet_option = $module.Params.$param
+        }
+    }
+
+    # map module params that are datetimes in the cmdlet arguments
+    foreach ($param in $datetime_params.Keys) {
+        $datetime_param = $datetime_params.$param
+        if ($null -ne $module.Params.$param) {
+            $cmdlet_arguments.$datetime_param = $(get-date $module.Params.$param)
+        }
+    }
+
+    # map module params that are switches in the cmdlet arguments
+    foreach ($param in $switch_params.Keys) {
+        $switch_param = $switch_params.$param
+        if ($module.Params.$param -eq $true) {
+            $cmdlet_arguments.$switch_param = $true
+        }
+    }
+
+    return $cmdlet_arguments
+}
+
+
+Function Format-DateTimeAsStringSafely {
+    # Format a datetime object as a string, safely. If the datetime object is null, return an empty string.
+    # Optionally, provide a format string to use for the datetime object.
+    param (
+        [Parameter(Mandatory = $true)][AllowNull()]$dateTimeObject,
+        [Parameter(Mandatory = $false)][string]$format = "yyyy-MM-dd HH:mm:ss z"
+    )
+
+    if ($null -eq $dateTimeObject) {
+        return ""
+    }
+
+    try {
+        return $dateTimeObject.ToString($format)
+    }
+    catch {
+        throw "Failed to format date time object ($dateTimeObject) as string: $($_.Exception.Message)"
+    }
+}

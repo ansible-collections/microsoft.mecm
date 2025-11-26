@@ -1,0 +1,393 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: software_update_deployment_info
+  short_description: Gather information about
+  description:
+    - This module creates, updates, or deletes a software update deployment.
+
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+
+  notes:
+    - Each deployment has a unique ID. You can use this ID to identify the deployment for this module.
+      This module also allows you to use just the software update (or group) and collection to identify
+      a deployment. However, MECM does not prevent you from creating multiple deployments with the same
+      software update and collection, so if this exists in your environment you should prefer the ID option.
+    - There is no way to validate all of the current properties of the deployment. By default, this module
+      will always update the deployment to use the desired properties, even if the current state matches the
+      desired state. See the O(only_use_verifiable_properties_for_change_detection) option for more details.
+  options:
+    state:
+      description:
+        - The state of the software update deployment.
+      type: str
+      required: false
+      choices: [present, absent]
+      default: present
+    id:
+      description:
+        - The ID of the software update deployment to manage.
+        - This option can only be used for existing deployments. If creating a new deployment you should
+          specify one of O(software_update_group_id), O(software_update_group_name), O(software_update_id), O(software_update_name)
+          and one of O(collection_name), O(collection_id).
+      type: str
+      required: false
+    software_update_group_id:
+      description:
+        - The ID of the software update group to deploy.
+        - If O(state) is present, one and only one of O(software_update_group_id), O(software_update_group_name),
+          O(software_update_id), O(software_update_name) must be specified.
+        - Software updates cannot be modified once a deployment is created. For update operations, this option is only
+          used to identify a deployment.
+      type: str
+      required: false
+    software_update_group_name:
+      description:
+        - The name of the software update group to deploy.
+        - If O(state) is present, one and only one of O(software_update_group_id), O(software_update_group_name),
+          O(software_update_id), O(software_update_name) must be specified.
+        - Software updates cannot be modified once a deployment is created. For update operations, this option is only
+          used to identify a deployment.
+      type: str
+      required: false
+    software_update_id:
+      description:
+        - The ID of the software update to deploy.
+        - If O(state) is present, one and only one of O(software_update_group_id), O(software_update_group_name),
+          O(software_update_id), O(software_update_name) must be specified.
+        - Software updates cannot be modified once a deployment is created. For update operations, this option is only
+          used to identify a deployment.
+      type: str
+      required: false
+    software_update_name:
+      description:
+        - The name of the software update to deploy.
+        - If O(state) is present, one and only one of O(software_update_group_id), O(software_update_group_name),
+          O(software_update_id), O(software_update_name) must be specified.
+        - Software updates cannot be modified once a deployment is created. For update operations, this option is only
+          used to identify a deployment.
+      type: str
+      required: false
+    collection_name:
+      description:
+        - The name of the collection of clients that should receive the deployment.
+        - If O(state) is present, one and only one of O(collection_name), O(collection_id) must be specified.
+        - Collections cannot be modified once a deployment is created using this module. For update operations,
+          this option is only used to identify a deployment.
+      type: str
+      required: false
+    collection_id:
+      description:
+        - The ID of the collection of clients that should receive the deployment.
+        - If O(state) is present, one and only one of O(collection_name), O(collection_id) must be specified.
+        - Collections cannot be modified once a deployment is created using this module. For update operations,
+          this option is only used to identify a deployment.
+      type: str
+      required: false
+    only_use_verifiable_properties_for_change_detection:
+      description:
+        - Powershell does not expose all properties of the deployment object. This means that the current state
+          of some module arguments cannot be validated when updating a deployment.
+        - This option controls whether to force an update, or check the subset of exposed properties for changes.
+        - If true, the module will not check the current properties of the deployment and will always report a change,
+          even if the deployment is in the desired state.
+        - If false, the module will check the current properties of the deployment and will report a change
+          if needed.
+        - All properties specified in the module arguments will be used if the deployment is updated, regardless
+          of this option.
+      type: bool
+      required: false
+      default: false
+
+    name:
+      description:
+        - The name of the software update deployment.
+        - This option is not used to identify the deployment. It should be treated as just another property that
+          can be updated as needed.
+      type: str
+      required: false
+    allow_restarts:
+      description:
+        - Whether to restart clients after the software update is deployed.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+    allow_metered_network_downloads:
+      description:
+        - Whether to allow clients to download software updates over metered networks.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+    allow_remote_distribution_point_downloads:
+      description:
+        - Whether to allow clients to download software updates from neighboring boundary group distribution points,
+          if the current boundary group does not have any distribution points.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+    allow_default_distribution_point_downloads:
+      description:
+        - Whether to allow clients to download software updates from the default boundary group distribution point,
+          if no other distribution points are available.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+    available_time:
+      description:
+        - The time the software update is available to be deployed to clients.
+        - The format must be a valid powershell date string. It should be parsable by the Get-Date cmdlet.
+          Some examples are "2025-01-01", "2025-01-01 12:00:00 AM", "2025-01-01 12 PM"
+      type: str
+      required: false
+    expiration_time:
+      description:
+        - The time the software update deployment expires.
+        - The format must be a valid powershell date string. It should be parsable by the Get-Date cmdlet.
+          Some examples are "2025-01-01", "2025-01-01 12:00:00 AM", "2025-01-01 12 PM"
+      type: str
+      required: false
+    deployment_type:
+      description:
+        - Specifies deployment type. C(required) means the software update must be installed on the client.
+          C(available) means the software update is available to be installed on the client.
+      type: str
+      choices: [required, available]
+      required: false
+    description:
+      description:
+        - The description of the software update deployment.
+      type: str
+      required: false
+    disable_operations_manager_alerts:
+      description:
+        - Whether to disable Operations Manager alerts during the software update deployment.
+      type: bool
+      required: false
+    generate_operations_manager_alert_on_failure:
+      description:
+        - Whether to generate Operations Manager alerts if the software update deployment fails.
+      type: bool
+      required: false
+    generate_success_threshold_alert:
+      description:
+        - Whether to generate Operations Manager alerts if the software update deployment success rate drops below a threshold.
+        - The threshold is a percentage of the total number of clients that have attempted the software update.
+        - Set the threshold with the O(success_threshold) option.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+    success_threshold:
+      description:
+        - The threshold as a percentage for the success rate of the software update deployment.
+        - This value should be between 0 and 100.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: int
+      required: false
+      default: 95
+    allow_microsoft_update_downloads:
+      description:
+        - Whether clients are allowed to download the software update from Microsoft Update.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+    allow_branch_cache_downloads:
+      description:
+        - Whether clients are allowed to download the software update from Windows BranchCache.
+      type: bool
+      required: false
+    enabled:
+      description:
+        - Whether the software update deployment is enabled.
+      type: bool
+      required: false
+    persist_on_write_filter_device:
+      description:
+        - Whether to install a software update on the temporary overlay and commit changes later, or commit the changes at an installation deadline or a maintenance window.
+        - If true, the software update will be installed on the temporary overlay and committed later.
+      type: bool
+      required: false
+    require_post_reboot_full_scan:
+      description:
+        - Whether to require a full scan after a reboot.
+        - "This parameter controls the following console option: Software updates deployment re-evaluation behavior upon restart."
+        - If true, clients will run a full update deployment evaluation cycle after they restart from this deployment.
+      type: bool
+      required: false
+    restart_servers_if_needed:
+      description:
+        - Whether to restart server clients if needed after the software update is deployed.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+    restart_workstations_if_needed:
+      description:
+        - Whether to restart workstation clients if needed after the software update is deployed.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+    send_wake_up_packet:
+      description:
+        - Whether to send a wake up packet to clients before the software update is deployed.
+      type: bool
+      required: false
+    enable_soft_deadline:
+      description:
+        - Whether to enable a soft deadline for the software update deployment.
+      type: bool
+      required: false
+    allow_installation_outside_maintenance_window:
+      description:
+        - Whether to allow clients to install the software update outside of a maintenance window.
+      type: bool
+      required: false
+    deployment_timezone:
+      description:
+        - Specify the timezone clients should use to determine the availability of the deployment.
+        - UTC could be used to ensure all clients can access the deployment at the same time.
+      type: str
+      required: false
+      choices: [utc, local]
+    user_notification_method:
+      description:
+        - Specifies the method to notify users about the software update deployment.
+        - C(DisplayAll) means display in Software Center and show all notifications
+        - C(DisplaySoftwareCenterOnly) means display in Software Center and only show notifications for computer restarts
+      type: str
+      choices: [DisplayAll, DisplaySoftwareCenterOnly]
+      required: false
+    deployment_verbosity:
+      description:
+        - Specifies the verbosity of the software update deployment messages returned by the clients.
+      type: str
+      choices: [AllMessages, OnlySuccessAndErrorMessages, OnlyErrorMessages]
+      required: false
+
+    saved_package_id:
+      description:
+        - The ID of the saved package to use for the software update deployment.
+        - This can only be set when creating a deployment.
+        - This is required if O(deploy_with_no_package) is true.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: str
+      required: false
+    deploy_with_no_package:
+      description:
+        - Whether to deploy the software update without a package.
+        - This can only be set when creating a deployment.
+        - This property is not verifiable for update operations. See the O(only_use_verifiable_properties_for_change_detection)
+          option for more details.
+      type: bool
+      required: false
+      default: true
+    distribute_content:
+      description:
+        - Whether to distribute the content to distribution points.
+        - This can only be set when creating a deployment.
+        - This property cannot be updated once a deployment is created.
+      type: bool
+      required: false
+      default: false
+    distribution_collection_name:
+      description:
+        - The name of the collection to use for the distribution of the software update.
+        - This can only be set when creating a deployment.
+        - One of O(distribution_collection_name), O(distribution_point_name), or O(distribution_point_group_name) must be specified.
+        - This property cannot be updated once a deployment is created.
+      type: str
+      required: false
+    distribution_point_group_name:
+      description:
+        - The name of the distribution point group to use for the distribution of the software update.
+        - This can only be set when creating a deployment.
+        - One of O(distribution_collection_name), O(distribution_point_name), or O(distribution_point_group_name) must be specified.
+        - This property cannot be updated once a deployment is created.
+      type: str
+      required: false
+    distribution_point_name:
+      description:
+        - The name of the distribution point to use for the distribution of the software update.
+        - This can only be set when creating a deployment.
+        - One of O(distribution_collection_name), O(distribution_point_name), or O(distribution_point_group_name) must be specified.
+        - This property cannot be updated once a deployment is created.
+      type: str
+      required: false
+
+  author:
+    - Ansible Cloud Team (@ansible-collections)
+
+EXAMPLES: |
+  - name: Create software update deployment
+    microsoft.mecm.software_update_deployment: &create-deploy
+      site_code: "{{ test_site_code }}"
+      only_use_verifiable_properties_for_change_detection: true
+      state: present
+      name: "Test Deployment"
+      software_update_name: "{{ test_software_update_name }}"
+      collection_name: "{{ test_collection_name }}"
+      allow_restarts: true
+      allow_metered_network_downloads: true
+      allow_remote_distribution_point_downloads: true
+      allow_default_distribution_point_downloads: true
+      available_time: 11:00:00 AM
+      expiration_time: 11:00:00 PM
+      deployment_type: "required"
+      description: Test Description"
+      disable_operations_manager_alerts: true
+      generate_operations_manager_alert_on_failure: true
+      generate_success_threshold_alert: true
+      success_threshold: 95
+      allow_microsoft_update_downloads: true
+      allow_branch_cache_downloads: true
+      enabled: true
+      require_post_reboot_full_scan: true
+      restart_servers_if_needed: true
+      restart_workstations_if_needed: true
+      send_wake_up_packet: true
+      enable_soft_deadline: true
+      deployment_timezone: "utc"
+      user_notification_method: "DisplayAll"
+      deployment_verbosity: "AllMessages"
+      deploy_with_no_package: true
+    register: _create_deploy
+
+  - name: Update Deployment Available Time
+    microsoft.mecm.software_update_deployment:
+      site_code: "{{ test_site_code }}"
+      only_use_verifiable_properties_for_change_detection: true
+      id: "{{ _create_deploy.software_update_deployment.id }}"
+      available_time: 12:00:00 PM
+
+  - name: Remove Deployment
+    microsoft.mecm.software_update_deployment:
+      site_code: "{{ test_site_code }}"
+      state: absent
+      software_update_name: Microsoft Update 111111
+      collection_name: Test Hosts
+
+RETURN:
+  software_update_deployment:
+    description: Identifiers for the software update deployment.
+    returned: always
+    type: dict
+    sample: |-
+      {
+          "assigned_software_update_ids": [
+              16777515
+          ],
+          "collection_id": "SMS000KM",
+          "id": "{14FE34A0-5618-4FB5-A0CF-8F64DB526717}",
+          "name": "Test Deployment"
+      }
