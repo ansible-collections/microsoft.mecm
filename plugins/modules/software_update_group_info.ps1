@@ -60,11 +60,11 @@ foreach ($software_update_group in $software_update_groups) {
         name = $software_update_group.LocalizedDisplayName
         id = $software_update_group.CI_ID.ToString()
         updates = $software_update_group.Updates
-        contains_expired_updates = ($software_update_group.ContainsExpiredUpdates -eq $true) # this can be null, so we need to convert to a bool
-        contains_superseded_updates = ($software_update_group.ContainsSupersededUpdates -eq $true)
+        contains_expired_updates = $software_update_group.ContainsExpiredUpdates
+        contains_superseded_updates = $software_update_group.ContainsSupersededUpdates
         created_by = $software_update_group.CreatedBy
         description = $software_update_group.LocalizedDescription
-        created_time = $software_update_group.DateCreated.ToString("yyyy-MM-dd HH:mm:ss")
+        created_time = Format-DateTimeAsStringSafely -dateTimeObject $software_update_group.DateCreated
         is_bundle = $software_update_group.IsBundle
         is_deployed = $software_update_group.IsDeployed
         is_digest = $software_update_group.IsDigest
@@ -76,21 +76,10 @@ foreach ($software_update_group in $software_update_groups) {
         is_quarantined = $software_update_group.IsQuarantined
         is_superseded = $software_update_group.IsSuperseded
         is_user_defined = $software_update_group.IsUserDefined
-        is_version_compatible = ($software_update_group.IsVersionCompatible -eq $true)
         last_modified_by = $software_update_group.LastModifiedBy
-        last_modified_time = ""
-        last_status_time = ""
-        effective_date = ""
-    }
-    $datetime_or_null_attrs = @{
-        last_modified_time = $software_update_group.DateLastModified
-        last_status_time = $software_update_group.LastStatusTime
-        effective_date = $software_update_group.EffectiveDate
-    }
-    foreach ($output_key in $datetime_or_null_attrs.Keys) {
-        if ($null -ne $datetime_or_null_attrs[$output_key]) {
-            $software_update_groups_formatted[-1][$output_key] = $datetime_or_null_attrs[$output_key].ToString("yyyy-MM-dd HH:mm:ss")
-        }
+        last_modified_time = Format-DateTimeAsStringSafely -dateTimeObject $software_update_group.DateLastModified
+        last_status_time = Format-DateTimeAsStringSafely -dateTimeObject $software_update_group.LastStatusTime
+        effective_date = Format-DateTimeAsStringSafely -dateTimeObject $software_update_group.EffectiveDate
     }
 }
 
