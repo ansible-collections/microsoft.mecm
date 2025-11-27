@@ -290,10 +290,6 @@ function Test-DeploymentNeedsUpdating {
             continue
         }
         if ($param_value -ne $deployment_object.$object_property_name) {
-            $module.result.triggered_property_change = $module_param_name
-            $module.result.triggered_property_before = $deployment_object.$object_property_name
-            $module.result.triggered_property_after = $param_value
-
             return $true
         }
     }
