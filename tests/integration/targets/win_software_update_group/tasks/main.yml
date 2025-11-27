@@ -7,6 +7,7 @@
         name: "{{ test_software_update_group_name }}"
         description: Test group created by integration test
         state: present
+        software_update_ids: "{{ test_update_ids }}"
       register: _create_sug
 
     - name: Create a new software update group - idempotence

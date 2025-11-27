@@ -76,10 +76,10 @@ RETURN:
           "is_quarantined": false,
           "is_superseded": false,
           "is_user_defined": true,
-          "is_version_compatible": null,
           "last_modified_by": "ECO\\Administrator",
-            "last_modified_time": "2025-11-21 12:23:42",
-            "last_status_time": "2025-11-21 20:51:17",
+          "last_modified_time": "2025-11-21 12:23:42",
+          "last_status_time": "2025-11-21 20:51:17",
+          "effective_date": "2025-11-21 12:23:42",
           "name": "test update group 2",
           "updates": [
               16777515
