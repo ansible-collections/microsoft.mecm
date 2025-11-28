@@ -9,10 +9,7 @@ DOCUMENTATION:
     - This module creates, updates, or deletes software update groups for a Configuration Manager site.
     - You can ensure that specific software updates are present in a software update group. For more
       complex operations, like adding updates, removing updates, or specifying an abolsute list, use
-      the microsoft.mecm.software_update_group_membership module.
-
-  seealso:
-    - module: microsoft.mecm.software_group_membership
+      the M(microsoft.mecm.software_update_group_membership) module.
 
   extends_documentation_fragment:
     - microsoft.mecm.uses_cm_ps_module
@@ -51,7 +48,7 @@ DOCUMENTATION:
     software_update_ids:
       description:
         - Specify the IDs of the software updates to ensure are present in the software update group.
-        - For more complex operaitons, use the microsoft.mecm.software_update_group_membership module.
+        - For more complex operaitons, use the M(microsoft.mecm.software_update_group_membership) module.
         - Either this option or O(software_update_names) must be specified when O(state) is present.
       type: list
       elements: str
@@ -59,7 +56,7 @@ DOCUMENTATION:
     software_update_names:
       description:
         - Specify the names of the software updates to ensure are present in the software update group.
-        - For more complex operaitons, use the microsoft.mecm.software_update_group_membership module.
+        - For more complex operaitons, use the M(microsoft.mecm.software_update_group_membership) module.
         - Either this option or O(software_update_ids) must be specified when O(state) is present.
       type: list
       elements: str
