@@ -1,0 +1,88 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: software_update_group_info
+  short_description: Gather information about software update groups in a Configuration Manager site
+  description:
+    - This module gathers information about software update groups for a Configuration Manager site.
+
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+
+  options:
+    name:
+      description:
+        - Specify the name to use when searching for the software update group.
+        - This option is mutually exclusive with the id option.
+      type: str
+      required: false
+    id:
+      description:
+        - Specify the ID of the software update group to get information about.
+        - This option is mutually exclusive with the name option.
+        - If you are creating a new software update group, you must use the name option instead.
+      type: str
+      required: false
+
+  author:
+    - Ansible Cloud Team (@ansible-collections)
+
+EXAMPLES: |
+  # Create the PS drive for the site "XYZ"
+  - name: Create the PS drive for the site "XYZ"
+    microsoft.mecm.site_ps_drive:
+      site_code: XYZ
+      state: present
+
+  - name: Gather software update groups for the site "XYZ"
+    microsoft.mecm.software_update_group_info:
+      site_code: "XYZ"
+
+  - name: Gather information about the software update group with the name "Windows 10"
+    microsoft.mecm.software_update_group_info:
+      site_code: "XYZ"
+      name: "Windows 10"
+
+  - name: Gather information about the software update group with the ID "1234567890"
+    microsoft.mecm.software_update_group_info:
+      site_code: "XYZ"
+      id: "1234567890"
+
+RETURN:
+  software_update_groups:
+    description: List of software update groups for the site.
+    returned: always
+    type: list
+    elements: dict
+    sample: |-
+      [
+        {
+          "contains_expired_updates": false,
+          "contains_superseded_updates": false,
+          "created_by": "ECO\\Administrator",
+          "created_time": "2025-11-21 12:23:42",
+          "effective_date": "",
+          "id": "16777519",
+          "is_bundle": true,
+          "is_deployed": false,
+          "is_digest": true,
+          "is_enabled": true,
+          "is_expired": false,
+          "is_hidden": false,
+          "is_latest": true,
+          "is_provisioned": false,
+          "is_quarantined": false,
+          "is_superseded": false,
+          "is_user_defined": true,
+          "last_modified_by": "ECO\\Administrator",
+          "last_modified_time": "2025-11-21 12:23:42",
+          "last_status_time": "2025-11-21 20:51:17",
+          "effective_date": "2025-11-21 12:23:42",
+          "name": "test update group 2",
+          "updates": [
+              16777515
+          ]
+        }
+      ]

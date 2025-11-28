@@ -1,0 +1,9 @@
+---
+minor_changes:
+  - Add software_update_group_info module
+  - Add software_update_group module
+  - Add software_update_group_membership module
+
+trivial:
+  - Add powershell extension recommendation for VS Code
+  - Disable formating option from ps extension that conflicts with ansible lint

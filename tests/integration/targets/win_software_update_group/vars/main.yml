@@ -1,0 +1,6 @@
+---
+test_software_update_group_name: "{{ unique_test_id }}-sug"
+test_software_update_group_new_name: "{{ unique_test_id }}-sug-updated"
+test_update_ids:
+  - "16777515"
+  - "16777517"
