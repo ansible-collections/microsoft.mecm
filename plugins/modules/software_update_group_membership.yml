@@ -37,7 +37,6 @@ DOCUMENTATION:
     software_update_ids:
       description:
         - Specify the IDs of the software updates to ensure are present in the software update group.
-        - For more complex operaitons, use the M(microsoft.mecm.software_update_group_membership) module.
         - Either this option or O(software_update_names) must be specified when O(state) is present.
       type: list
       elements: str
@@ -45,7 +44,6 @@ DOCUMENTATION:
     software_update_names:
       description:
         - Specify the names of the software updates to ensure are present in the software update group.
-        - For more complex operaitons, use the M(microsoft.mecm.software_update_group_membership) module.
         - Either this option or O(software_update_ids) must be specified when O(state) is present.
       type: list
       elements: str
