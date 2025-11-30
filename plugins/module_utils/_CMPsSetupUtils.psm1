@@ -9,7 +9,7 @@ Function Get-LocalComputerFQDN {
     If the user provided the computer name, the function will return that value. Otherwise, it will
     calculate the FQDN based on the computer name and domain.
     #>
-    $sysinfo = Get-CimInstance Win32_OperatingSystem
+    $sysinfo = Get-CimInstance Win32_ComputerSystem
     $fqdn = "{0}.{1}" -f $sysinfo.Name, $sysinfo.Domain
     return $fqdn
 }

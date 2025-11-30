@@ -1,0 +1,128 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: sccm_dp_status_info
+  short_description: Retrieve distribution point status information from SCCM
+  description:
+    - Retrieves distribution point status information for packages and content from SCCM using Get-CMDistributionStatus.
+    - Returns detailed package distribution data with authentic SCCM field names (PackageID, SoftwareName, etc.).
+    - Supports filtering by specific distribution points or package IDs for targeted monitoring.
+    - Read-only module that provides visibility into SCCM distribution infrastructure health.
+  version_added: "0.1.0"
+  requirements:
+    - SCCM PowerShell module (ConfigurationManager)
+    - Administrative access to SCCM site server
+  options:
+    computer_name:
+      description:
+        - The SCCM site server computer name to connect to.
+        - Defaults to localhost if not specified.
+      required: false
+      type: str
+    distribution_point:
+      description:
+        - Specific distribution point name(s) to query.
+        - If not specified, all distribution points will be queried.
+      required: false
+      type: list
+      elements: str
+    package_id:
+      description:
+        - Specific package ID to query distribution status for.
+        - If not specified, all packages will be queried for the target distribution points.
+      required: false
+      type: str
+  notes:
+    - This module requires the SCCM Console to be installed on the target machine.
+    - The module connects to the SCCM site server using PowerShell cmdlets.
+    - This is an info module that does not make any changes to the system.
+    - "B(Performance): In large environments with thousands of packages and many distribution points, query time may be significant. Consider using C(distribution_point) and C(package_id) filters to limit scope."
+    - "B(Server validation): The module validates that the connected SCCM site matches the specified C(computer_name) parameter to ensure consistency."
+  author:
+    - "Ansible Community (@ansible-community)"
+
+EXAMPLES: |
+  - name: Get status of all packages on all distribution points (localhost)
+    microsoft.mecm.sccm_dp_status_info:
+
+  - name: Get status of all packages on remote SCCM server
+    microsoft.mecm.sccm_dp_status_info:
+      computer_name: "sccm-server.domain.com"
+
+  - name: Get status of specific package on all distribution points
+    microsoft.mecm.sccm_dp_status_info:
+      computer_name: "sccm-server.domain.com"
+      package_id: "ECO00003"
+
+  - name: Get status of all packages on specific distribution points
+    microsoft.mecm.sccm_dp_status_info:
+      computer_name: "sccm-server.domain.com"
+      distribution_point:
+        - "DP-NYC-01.domain.com"
+        - "DP-NYC-02.domain.com"
+
+  - name: Get status of specific package on specific distribution point
+    microsoft.mecm.sccm_dp_status_info:
+      computer_name: "sccm-server.domain.com"
+      distribution_point: ["DP-NYC-01.domain.com"]
+      package_id: "ECO00003"
+
+  - name: Check distribution readiness before deployment
+    microsoft.mecm.sccm_dp_status_info:
+      computer_name: "{{ sccm_server }}"
+      package_id: "{{ critical_package_id }}"
+    register: dp_status
+
+  - name: Ensure package is fully distributed
+    assert:
+      that:
+        - dp_status.dp_status | selectattr('state', 'equalto', 'Failed') | list | length == 0
+        - dp_status.dp_status | selectattr('state', 'equalto', 'InProgress') | list | length == 0
+        - dp_status.dp_status | selectattr('state', 'equalto', 'Success') | list | length > 0
+      fail_msg: "Package {{ critical_package_id }} is not ready for deployment"
+
+RETURN:
+  dp_status:
+    description: List of distribution point status information
+    returned: always
+    type: list
+    elements: dict
+    contains:
+      dp_name:
+        description: Distribution point server name
+        type: str
+        returned: always
+        sample: "DP-NYC-01.domain.com"
+      package_id:
+        description: Package identifier from SCCM
+        type: str
+        returned: always
+        sample: "ECO00001"
+      software_name:
+        description: Software name from SCCM distribution status
+        type: str
+        returned: always
+        sample: "Microsoft Corporation Configuration Manager Client Package"
+      state:
+        description: Distribution state based on SCCM status counters
+        type: str
+        returned: always
+        sample: "Success"
+        choices: ["Success", "Failed", "InProgress", "Unknown", "No Content"]
+      error:
+        description: Error information if available
+        type: str
+        returned: always
+        sample: ""
+      last_update_date:
+        description: Last update date from SCCM in /Date(timestamp)/ format
+        type: str
+        returned: always
+        sample: "/Date(1763863322367)/"
+      source_size:
+        description: Content source size in KB from SCCM
+        type: int
+        returned: always
+        sample: 614061
