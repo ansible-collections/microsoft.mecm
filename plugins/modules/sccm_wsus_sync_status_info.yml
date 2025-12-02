@@ -1,0 +1,109 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: sccm_wsus_sync_status_info
+  short_description: Retrieve WSUS synchronization status information from SCCM software update point
+  description:
+    - Retrieves Windows Server Update Services (WSUS) synchronization status from SCCM software update points.
+    - Returns last synchronization time, sync status, and relevant error information for monitoring WSUS health.
+    - Supports multiple fallback methods to retrieve sync status using WMI queries and PowerShell cmdlets.
+    - Read-only module that provides visibility into software update point synchronization health.
+  version_added: "0.1.0"
+  requirements:
+    - SCCM PowerShell module (ConfigurationManager)
+    - Administrative access to SCCM site server
+    - Software Update Point configured on the target server
+  options:
+    server_name:
+      description:
+        - The FQDN of the primary site server that hosts the software update point.
+        - This must be a fully qualified domain name of the SCCM primary site server.
+        - The server must have a configured software update point role.
+      required: true
+      type: str
+  notes:
+    - This module requires the SCCM Console to be installed on the target machine.
+    - The module connects to the SCCM site server using PowerShell cmdlets and WMI queries.
+    - This is an info module that does not make any changes to the system.
+    - The module is idempotent as it only retrieves information without modifying any state.
+    - "B(Performance): The module attempts multiple methods to retrieve sync status, which may take some time in large environments."
+    - "B(Authentication): Requires appropriate permissions to access WMI namespaces and SCCM log files on the target server."
+    - "B(Error handling): If primary methods fail, the module attempts fallback approaches before reporting failure."
+  author:
+    - "Ansible Community (@ansible-community)"
+
+EXAMPLES: |
+  - name: Get WSUS sync status for primary site server
+    microsoft.mecm.sccm_wsus_sync_status_info:
+      server_name: "sccm-primary.contoso.com"
+    register: wsus_status
+
+  - name: Check if WSUS sync was successful
+    microsoft.mecm.sccm_wsus_sync_status_info:
+      server_name: "{{ ansible_fqdn }}"
+    register: sync_result
+    failed_when: sync_result.sync_status == "Failed"
+
+  - name: Display sync status information
+    microsoft.mecm.sccm_wsus_sync_status_info:
+      server_name: "sccm-primary.contoso.com"
+    register: wsus_info
+  
+  - name: Show sync results
+    debug:
+      msg: |
+        WSUS Sync Status: {{ wsus_info.sync_status }}
+        Last Sync Time: {{ wsus_info.last_sync_time | default('Never') }}
+        Error Count: {{ wsus_info.error_logs | length }}
+
+  - name: Monitor WSUS sync health in a loop
+    microsoft.mecm.sccm_wsus_sync_status_info:
+      server_name: "sccm-primary.contoso.com"
+    register: wsus_check
+    until: wsus_check.sync_status == "Success"
+    retries: 10
+    delay: 300
+    when: monitor_wsus_sync | default(false)
+
+  - name: Alert on WSUS sync failures
+    microsoft.mecm.sccm_wsus_sync_status_info:
+      server_name: "{{ item }}"
+    register: sync_status
+    loop:
+      - "sccm-primary1.contoso.com"
+      - "sccm-primary2.contoso.com"
+    failed_when: false
+    
+  - name: Report WSUS sync failures
+    debug:
+      msg: "WSUS sync failed on {{ item.server_name }}: {{ item.error_logs | join(', ') }}"
+    loop: "{{ sync_status.results }}"
+    when: item.sync_status == "Failed"
+
+RETURN:
+  server_name:
+    description: The FQDN of the server that was queried
+    returned: always
+    type: str
+    sample: "sccm-primary.contoso.com"
+  last_sync_time:
+    description: Timestamp of the last WSUS synchronization attempt
+    returned: always
+    type: str
+    sample: "2024-12-01 14:30:15"
+  sync_status:
+    description: Status of the last WSUS synchronization
+    returned: always
+    type: str
+    choices: ["Success", "Failed", "In Progress", "Unknown"]
+    sample: "Success"
+  error_logs:
+    description: Array of error messages from WSUS sync logs when sync_status is Failed
+    returned: always
+    type: list
+    elements: str
+    sample:
+      - "Failed to connect to upstream WSUS server"
+      - "Sync operation timed out after 3600 seconds"

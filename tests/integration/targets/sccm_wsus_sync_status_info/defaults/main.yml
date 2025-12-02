@@ -1,0 +1,25 @@
+---
+# Default test variables for sccm_wsus_sync_status_info module testing
+
+# SCCM Server Configuration - will be set dynamically in tasks
+sccm_server_name: ""
+
+# Software Update Point Configuration - will be set dynamically in tasks  
+test_sup_server: ""
+
+# Test environment flags
+has_sccm_sup: true
+
+# Expected return value fields for validation
+expected_fields:
+  - "server_name"
+  - "last_sync_time" 
+  - "sync_status"
+  - "error_logs"
+
+# Valid sync status values
+valid_sync_statuses:
+  - "Success"
+  - "Failed"
+  - "In Progress"
+  - "Unknown"

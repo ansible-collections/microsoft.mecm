@@ -1,0 +1,3 @@
+---
+minor_changes:
+  - "sccm_wsus_sync_status_info - Add new module to retrieve WSUS synchronization status information from SCCM software update points with last sync time, status, and error reporting."

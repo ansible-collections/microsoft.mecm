@@ -1,0 +1,4 @@
+# Integration test aliases for sccm_wsus_sync_status_info module
+
+# Requires Windows environment with SCCM and Software Update Point
+windows

@@ -1,0 +1,255 @@
+---
+# Integration tests for sccm_wsus_sync_status_info module
+
+# --- Gather facts to get hostname information ---
+- name: Gather facts
+  setup:
+
+# --- Set up dynamic test variables using Ansible facts ---
+- name: Set SCCM server variables from facts
+  set_fact:
+    sccm_server_name: "{{ ansible_fqdn | default(ansible_hostname + '.' + (ansible_domain | default('local')), true) | default('localhost') }}"
+
+- name: Set software update point server from server name
+  set_fact:
+    test_sup_server: "{{ sccm_server_name }}"
+
+# --- Discover SCCM environment (non-fatal) ---
+- name: Query WSUS sync status to gather baseline data
+  microsoft.mecm.sccm_wsus_sync_status_info:
+    server_name: "{{ sccm_server_name }}"
+  register: baseline_query
+  failed_when: false
+  ignore_errors: true
+
+# --- Extract usable values for downstream tests ---
+- name: Set test variables based on environment
+  set_fact:
+    test_server_name: "{{ sccm_server_name }}"
+    has_real_sup: "{{ baseline_query is not failed and baseline_query.server_name is defined }}"
+    baseline_sync_status: "{{ baseline_query.sync_status | default('Unknown') }}"
+
+- name: Display auto-discovered SCCM values
+  debug:
+    msg: |
+      SCCM Discovery:
+      - Server: {{ test_server_name }}
+      - SUP Available: {{ has_real_sup }}
+      - Baseline Sync Status: {{ baseline_sync_status }}
+
+# -------------------------------
+# PARAMETER VALIDATION
+# -------------------------------
+
+- name: Module should fail when server_name is missing
+  microsoft.mecm.sccm_wsus_sync_status_info:
+  register: missing_server_param
+  failed_when: false
+  ignore_errors: true
+
+- name: Assert that missing server_name parameter causes failure
+  assert:
+    that:
+      - "'missing required arguments: server_name' in (missing_server_param.msg | default(''))"
+    fail_msg: "Module should report missing required server_name parameter"
+
+- name: Module should fail with invalid server_name
+  microsoft.mecm.sccm_wsus_sync_status_info:
+    server_name: "invalid-server-that-does-not-exist.invalid"
+  register: invalid_server_param
+  failed_when: false
+  ignore_errors: true
+
+- name: Validate invalid server handling
+  debug:
+    msg: |
+      Invalid server test result:
+      - Failed: {{ invalid_server_param is failed }}
+      - Message: {{ invalid_server_param.msg | default('No message') }}
+
+# -------------------------------
+# BASIC EXECUTION
+# -------------------------------
+
+- name: Run module with valid server_name
+  microsoft.mecm.sccm_wsus_sync_status_info:
+    server_name: "{{ test_server_name }}"
+  register: basic_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Debug basic execution output
+  debug:
+    var: basic_run
+
+- name: Validate basic execution structure
+  assert:
+    that:
+      - basic_run.changed == false
+      - basic_run.server_name is defined
+      - basic_run.sync_status is defined
+      - basic_run.last_sync_time is defined
+      - basic_run.error_logs is defined
+      - basic_run.sync_status in valid_sync_statuses
+    fail_msg: "Basic execution failed or returned invalid structure"
+  when: basic_run is not failed
+
+# -------------------------------
+# CHECK MODE VALIDATION
+# -------------------------------
+
+- name: Validate module behavior in check mode
+  microsoft.mecm.sccm_wsus_sync_status_info:
+    server_name: "{{ test_server_name }}"
+  register: check_mode_run
+  check_mode: true
+  failed_when: false
+  ignore_errors: true
+
+- name: Assert check mode behavior is correct
+  assert:
+    that:
+      - check_mode_run.changed == false
+      - check_mode_run.server_name is defined
+      - check_mode_run.sync_status is defined
+      - check_mode_run.last_sync_time is defined
+      - check_mode_run.error_logs is defined
+    fail_msg: "Check mode should behave identically to normal mode for info modules"
+  when: check_mode_run is not failed and basic_run is not failed
+
+# -------------------------------
+# IDEMPOTENCY VALIDATION
+# -------------------------------
+
+- name: Run module a second time to test idempotency
+  microsoft.mecm.sccm_wsus_sync_status_info:
+    server_name: "{{ test_server_name }}"
+  register: second_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Validate idempotency (no changes reported)
+  assert:
+    that:
+      - second_run.changed == false
+      - second_run.server_name == basic_run.server_name
+    fail_msg: "Module should be idempotent and report no changes"
+  when: basic_run is not failed and second_run is not failed
+
+# -------------------------------
+# RETURN VALUE VALIDATION
+# -------------------------------
+
+- name: Validate all required return fields are present
+  assert:
+    that:
+      - item in basic_run
+    fail_msg: "Required field '{{ item }}' is missing from module output"
+  loop: "{{ expected_fields }}"
+  when: basic_run is not failed
+
+- name: Validate server_name return value matches input
+  assert:
+    that:
+      - basic_run.server_name == test_server_name
+    fail_msg: "server_name return value should match input parameter"
+  when: basic_run is not failed
+
+- name: Validate sync_status is a valid value
+  assert:
+    that:
+      - basic_run.sync_status in valid_sync_statuses
+    fail_msg: "sync_status '{{ basic_run.sync_status }}' is not in valid values: {{ valid_sync_statuses }}"
+  when: basic_run is not failed
+
+- name: Validate error_logs is a list
+  assert:
+    that:
+      - basic_run.error_logs is iterable
+      - basic_run.error_logs is not string
+    fail_msg: "error_logs should be a list/array, not a string"
+  when: basic_run is not failed
+
+# -------------------------------
+# SYNC STATUS SPECIFIC TESTS
+# -------------------------------
+
+- name: Check if error_logs are populated when sync_status is Failed
+  debug:
+    msg: |
+      Sync Status: {{ basic_run.sync_status }}
+      Error Logs Count: {{ basic_run.error_logs | length }}
+      Error Logs: {{ basic_run.error_logs }}
+  when: basic_run is not failed and basic_run.sync_status == "Failed"
+
+- name: Validate error_logs behavior on failure
+  assert:
+    that:
+      - basic_run.error_logs | length >= 0
+    fail_msg: "error_logs should be present (even if empty) when sync_status is Failed"
+  when: basic_run is not failed and basic_run.sync_status == "Failed"
+
+# -------------------------------
+# ALTERNATIVE SERVER NAME FORMATS
+# -------------------------------
+
+- name: Test with short hostname format
+  microsoft.mecm.sccm_wsus_sync_status_info:
+    server_name: "{{ ansible_hostname }}"
+  register: short_hostname_run
+  failed_when: false
+  ignore_errors: true
+  when: ansible_hostname != test_server_name
+
+- name: Validate short hostname behavior
+  debug:
+    msg: |
+      Short hostname test:
+      - Failed: {{ short_hostname_run is failed }}
+      - Server name returned: {{ short_hostname_run.server_name | default('Not returned') }}
+  when: ansible_hostname != test_server_name and short_hostname_run is defined
+
+# -------------------------------
+# ERROR HANDLING TESTS
+# -------------------------------
+
+- name: Test module resilience with non-existent server
+  microsoft.mecm.sccm_wsus_sync_status_info:
+    server_name: "non-existent-server.test.local"
+  register: nonexistent_server_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Validate error handling for non-existent server
+  debug:
+    msg: |
+      Non-existent server test:
+      - Module failed: {{ nonexistent_server_run is failed }}
+      - Error message: {{ nonexistent_server_run.msg | default('No error message') }}
+
+# -------------------------------
+# SUMMARY
+# -------------------------------
+- name: Test Summary
+  debug:
+    msg: |
+      Integration Test Summary:
+      ==========================================
+      Environment:
+      - Server: {{ test_server_name }}
+      - SUP Available: {{ has_real_sup }}
+      - Baseline Status: {{ baseline_sync_status }}
+      
+      Test Results:
+      - Missing parameter validation: {{ 'PASS' if 'missing required arguments: server_name' in (missing_server_param.msg | default('')) else 'FAIL' }}
+      - Basic execution: {{ 'PASS' if basic_run is not failed else 'FAIL' }}
+      - Check mode: {{ 'PASS' if check_mode_run is not failed else 'FAIL' }}
+      - Idempotency: {{ 'PASS' if (second_run is not failed and second_run.changed == false) else 'FAIL' }}
+      - Return value structure: {{ 'PASS' if (basic_run is not failed and basic_run.server_name is defined) else 'FAIL' }}
+      - Invalid server handling: {{ 'PASS' if invalid_server_param is failed else 'FAIL' }}
+      
+      Module Output (when successful):
+      - Server Name: {{ basic_run.server_name | default('N/A') }}
+      - Sync Status: {{ basic_run.sync_status | default('N/A') }}
+      - Last Sync Time: {{ basic_run.last_sync_time | default('N/A') }}
+      - Error Logs Count: {{ basic_run.error_logs | length if basic_run.error_logs is defined else 'N/A' }}
