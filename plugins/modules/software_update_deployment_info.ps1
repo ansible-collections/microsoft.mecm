@@ -89,7 +89,7 @@ else {
 
 # Lookup deployments
 $deployment_objects = @()
-if ([string]::IsNullOrEmpty($module.Params.id)) {
+if (-not [string]::IsNullOrEmpty($module.Params.id)) {
     $deployment_objects += Get-CMSoftwareUpdateDeployment -DeploymentId $module.Params.id
 }
 else {
