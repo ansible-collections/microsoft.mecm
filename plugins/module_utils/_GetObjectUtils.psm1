@@ -12,11 +12,11 @@ function Get-SoftwareUpdateObject {
         [Parameter(Mandatory = $false)][boolean]$throw_error_if_not_found = $false
     )
     $software_update_object = $null
-    if (($null -ne $software_update_id) -and ($software_update_id -ne "")) {
-        $software_update_object = Get-CMSoftwareUpdate -Id $software_update_id
+    if (-not [string]::IsNullOrEmpty($software_update_id)) {
+        $software_update_object = Get-CMSoftwareUpdate -Id "$software_update_id"
     }
-    elseif (($null -ne $software_update_name) -and ($software_update_name -ne "")) {
-        $software_update_object = Get-CMSoftwareUpdate -Name $software_update_name
+    elseif (-not [string]::IsNullOrEmpty($software_update_name)) {
+        $software_update_object = Get-CMSoftwareUpdate -Name "$software_update_name"
     }
     else {
         $module.FailJson("Either software_update_id or software_update_name must be specified for Get-SoftwareUpdateObject")
@@ -39,11 +39,11 @@ function Get-SoftwareUpdateGroupObject {
         [Parameter(Mandatory = $false)][boolean]$throw_error_if_not_found = $false
     )
     $software_update_group_object = $null
-    if (($null -ne $software_update_group_id) -and ($software_update_group_id -ne "")) {
-        $software_update_group_object = Get-CMSoftwareUpdateGroup -Id $software_update_group_id
+    if (-not [string]::IsNullOrEmpty($software_update_group_id)) {
+        $software_update_group_object = Get-CMSoftwareUpdateGroup -Id "$software_update_group_id"
     }
-    elseif (($null -ne $software_update_group_name) -and ($software_update_group_name -ne "")) {
-        $software_update_group_object = Get-CMSoftwareUpdateGroup -Name $software_update_group_name
+    elseif (-not [string]::IsNullOrEmpty($software_update_group_name)) {
+        $software_update_group_object = Get-CMSoftwareUpdateGroup -Name "$software_update_group_name"
     }
     else {
         $module.FailJson("Either software_update_group_id or software_update_group_name must be specified for Get-SoftwareUpdateGroupObject")
@@ -66,11 +66,11 @@ function Get-CollectionObject {
         [Parameter(Mandatory = $false)][boolean]$throw_error_if_not_found = $false
     )
     $collection_object = $null
-    if (($null -ne $collection_id) -and ($collection_id -ne "")) {
-        $collection_object = Get-CMCollection -Id $collection_id
+    if (-not [string]::IsNullOrEmpty($collection_id)) {
+        $collection_object = Get-CMCollection -Id "$collection_id"
     }
-    elseif (($null -ne $collection_name) -and ($collection_name -ne "")) {
-        $collection_object = Get-CMCollection -Name $collection_name
+    elseif (-not [string]::IsNullOrEmpty($collection_name)) {
+        $collection_object = Get-CMCollection -Name "$collection_name"
     }
     else {
         $module.FailJson("Either collection_id or collection_name must be specified for Get-CollectionObject")

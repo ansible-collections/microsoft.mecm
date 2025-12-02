@@ -91,8 +91,8 @@ else {
 
 # Lookup deployments
 $deployment_objects = @()
-if (($null -ne $module.Params.id) -and ($module.Params.id -ne "")) {
-    $deployment_objects += Get-CMSoftwareUpdateDeployment -DeploymentId $module.Params.id
+if ([string]::IsNullOrEmpty($module.Params.id)) {
+    $deployment_object = Get-CMSoftwareUpdateDeployment -DeploymentId $module.Params.id
 }
 else {
     $cmdlet_args = Get-CmdletArgsForDeploymentQuery -module $module
@@ -107,6 +107,9 @@ else {
 
 # Format the results
 foreach ($deployment_object in $deployment_objects) {
+    if ($null -eq $deployment_object) {
+        continue
+    }
     $module.result.software_update_deployments += @{
         name = $deployment_object.AssignmentName
         id = $deployment_object.AssignmentUniqueId
