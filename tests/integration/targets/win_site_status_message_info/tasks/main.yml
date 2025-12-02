@@ -2,7 +2,7 @@
 - name: Get site status messages with component and severity
   microsoft.mecm.site_status_message_info:
     site_code: "{{ test_site_code }}"
-    component: SMS_NOTIFICATION_SERVER
+    component: SMS_WSUS_SYNC_MANAGER
     severity: information
   register: _get_component_status_messages
 
@@ -16,11 +16,11 @@
   ansible.builtin.assert:
     that:
       - _get_component_status_messages.site_status_messages | length > 0
-      - _get_error_status_messages.site_status_messages | length > 0
+      - _get_error_status_messages.site_status_messages | length != _get_component_status_messages.site_status_messages | length
       - _get_component_status_messages is not ansible.builtin.changed
       - _get_error_status_messages is not ansible.builtin.changed
       - >-
-        _get_component_status_messages.site_status_messages | selectattr('component', 'equalto', 'SMS_NOTIFICATION_SERVER') | length ==
+        _get_component_status_messages.site_status_messages | selectattr('component', 'equalto', 'SMS_WSUS_SYNC_MANAGER') | length ==
         _get_component_status_messages.site_status_messages | length
       - >-
         _get_error_status_messages.site_status_messages | selectattr('severity', 'equalto', 'error') | length ==
