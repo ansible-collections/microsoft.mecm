@@ -51,8 +51,6 @@ function Get-CmdletArgsForDeploymentQuery {
 }
 
 
-
-
 $spec = @{
     options = @{
         site_code = @{ type = 'str'; required = $true }
@@ -96,7 +94,7 @@ if ([string]::IsNullOrEmpty($module.Params.id)) {
 }
 else {
     $cmdlet_args = Get-CmdletArgsForDeploymentQuery -module $module
-    $search_results = @(Get-CMSoftwareUpdateDeployment @cmdlet_args)
+    $search_results = Get-CMSoftwareUpdateDeployment @cmdlet_args
     if ($search_results -is [array]) {
         $deployment_objects = $search_results
     }

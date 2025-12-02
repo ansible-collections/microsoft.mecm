@@ -61,7 +61,7 @@
           - _deploy_lookup.send_wake_up_packet == true
           - _deploy_lookup.disable_operations_manager_alerts == true
       vars:
-        _deploy_lookup: "{{ _lookup_deploy.software_update_deployments[0]}}"
+        _deploy_lookup: "{{ _lookup_deploy.software_update_deployments[0] }}"
 
     - name: Update software update deployment
       microsoft.mecm.software_update_deployment: &update-deploy
