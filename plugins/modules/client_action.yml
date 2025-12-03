@@ -1,0 +1,103 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: client_action
+  short_description: Start the execution of a client action on one or more devices.
+  description:
+    - This module starts the execution of a client action on one or more devices.
+    - You can target a specific device or a collection of devices.
+    - The module pushes the action via the Configuration Manager client. It does not wait for the action to complete.
+    - This module does not support idempotence or check mode.
+
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+
+  options:
+    device_name:
+      description:
+        - The name of the device to target.
+        - The device must be online and have the Configuration Manager client installed.
+        - One and only one of O(device_name), O(device_id), O(collection_name), O(collection_id) must be specified.
+      type: str
+      required: false
+    device_id:
+      description:
+        - The ID of the device to target.
+        - The device must be online and have the Configuration Manager client installed.
+        - One and only one of O(device_name), O(device_id), O(collection_name), O(collection_id) must be specified.
+      type: str
+      required: false
+
+    collection_name:
+      description:
+        - The name of the collection of devices to target.
+        - The device must already exist in the site.
+        - One and only one of O(device_name), O(device_id), O(collection_name), O(collection_id) must be specified.
+      type: str
+      required: false
+
+    collection_id:
+      description:
+        - The ID of the collection of devices to target.
+        - The collection must already exist in the site.
+        - One and only one of O(device_name), O(device_id), O(collection_name), O(collection_id) must be specified.
+      type: str
+      required: false
+
+    action:
+      description:
+        - The action to start on the targeted devices.
+      choices:
+        # https://learn.microsoft.com/en-us/powershell/module/configurationmanager/invoke-cmclientaction?view=sccm-ps#-actiontype
+        - EndpointProtectionFullScan
+        - EndpointProtectionQuickScan
+        - EndpointProtectionDownloadDefinition
+        - EndpointProtectionEvaluateSoftwareUpdate
+        - EndpointProtectionExcludeScanPaths
+        - EndpointProtectionAllowThreat
+        - EndpointProtectionRestoreQuarantinedItems
+        - ClientNotificationRequestMachinePolicyNow
+        - ClientNotificationRequestUsersPolicyNow
+        - ClientNotificationRequestDDRNow
+        - ClientNotificationRequestSWInvNow
+        - ClientNotificationRequestHWInvNow
+        - ClientNotificationAppDeplEvalNow
+        - ClientNotificationSUMDeplEvalNow
+        - ClientRequestSUPChangeNow
+        - ClientRequestDHAChangeNow
+        - ClientNotificationRebootMachine
+        - DiagnosticsEnableVerboseLogging
+        - DiagnosticsDisableVerboseLogging
+        - DiagnosticsCollectFiles
+        - EndpointProtectionRestoreWithDeps
+        - ClientNotificationCheckComplianceNow
+        - RequestScriptExecution
+        - RequestCMPivotExecution
+        - ClientNotificationWakeUpClientNow
+        # https://learn.microsoft.com/en-us/powershell/module/configurationmanager/invoke-cmclientaction?view=sccm-ps#-notificationtype
+        - RequestMachinePolicyNow
+        - RequestUsersPolicyNow
+      type: str
+      required: true
+
+  author:
+    - Ansible Cloud Team (@ansible-collections)
+
+EXAMPLES: |
+  - name: Start Endpoint Protection Full Scan on a device
+    microsoft.mecm.client_action:
+      site_code: "{{ test_site_code }}"
+      device_name: MYHOST01
+      action: EndpointProtectionFullScan
+
+  - name: Start Endpoint Protection Quick Scan on a collection
+    microsoft.mecm.client_action:
+      site_code: "{{ test_site_code }}"
+      collection_name: Test Hosts
+      action: EndpointProtectionQuickScan
+
+# Null is needed for Galaxy/AH to not fall flat
+# https://github.com/ansible/ansible-hub-ui/blob/9b35b78f1f5c6a5ef2346d0470e431ba5f25d06b/src/components/render-plugin-doc.tsx#L226-L228
+RETURN: ~

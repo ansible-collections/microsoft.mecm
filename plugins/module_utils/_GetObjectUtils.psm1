@@ -112,3 +112,40 @@ function Get-CollectionObject {
 
     return $collection_object
 }
+
+
+function Get-ClientDeviceObject {
+    # Helper function to get a client device object from the site
+    param (
+        [Parameter(Mandatory = $true)][object]$module,
+        [Parameter(Mandatory = $false)][AllowNull()][string]$device_id = $null,
+        [Parameter(Mandatory = $false)][AllowNull()][string]$device_name = $null,
+        [Parameter(Mandatory = $false)][boolean]$throw_error_if_not_found = $false
+    )
+    $client_device_object = $null
+    if (-not [string]::IsNullOrEmpty($device_id)) {
+        try {
+            $client_device_object = Get-CMDevice -Id "$device_id"
+        }
+        catch {
+            $module.FailJson("Failed to find a client device using the ID '$device_id'.")
+        }
+    }
+    elseif (-not [string]::IsNullOrEmpty($device_name)) {
+        try {
+            $client_device_object = Get-CMDevice -Name "$device_name"
+        }
+        catch {
+            $module.FailJson("Failed to find a client device using the name '$device_name'.")
+        }
+    }
+    else {
+        $module.FailJson("Either device_id or device_name must be specified for Get-ClientDeviceObject")
+    }
+
+    if (($null -eq $client_device_object) -and ($throw_error_if_not_found)) {
+        $module.FailJson("Failed to find a client device using the name '$device_name' or ID '$device_id'.")
+    }
+
+    return $client_device_object
+}
