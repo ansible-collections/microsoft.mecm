@@ -162,7 +162,7 @@ $group_id = $module.Params.group_id
 
 # Setup PS environment
 Import-CMPsModule -module $module
-Test-CMSiteNameAndConnect -module $module -site_code $site_code
+Test-CMSiteNameAndConnect -module $module -SiteCode $site_code
 
 # Get the software update group
 $sug = Get-SoftwareUpdateGroupObject `

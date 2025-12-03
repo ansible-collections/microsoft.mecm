@@ -29,7 +29,7 @@ $id = $module.Params.id
 
 # Setup PS environment
 Import-CMPsModule -module $module
-Test-CMSiteNameAndConnect -module $module -site_code $site_code
+Test-CMSiteNameAndConnect -module $module -SiteCode $site_code
 
 # Setup cmdlet parameters
 $cmdlet_params = @{}
