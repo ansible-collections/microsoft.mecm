@@ -1,0 +1,228 @@
+---
+# Integration tests for win_sccm_install_updates module
+
+# Gather facts for hostname information  
+- name: Gather facts
+  setup:
+
+- name: Test SCCM client availability
+  block:
+    - name: Check if SCCM client is running
+      win_service:
+        name: CcmExec
+      register: sccm_service_check
+      
+    - name: Skip tests if SCCM client not available
+      meta: end_play
+      when: sccm_service_check.state != "running"
+
+- name: Test module with no available updates (fire-and-forget)
+  microsoft.mecm.win_sccm_install_updates:
+    wait_for_completion: false
+  register: no_updates_result
+  ignore_errors: true
+
+- name: Verify fire-and-forget mode structure
+  assert:
+    that:
+      - no_updates_result is not failed
+      - no_updates_result.changed is defined
+      - no_updates_result.total_updates_processed is defined
+      - no_updates_result.total_updates_processed is number
+      - no_updates_result.installation_duration is defined
+      - no_updates_result.installation_duration is number
+      - no_updates_result.message is defined
+      - no_updates_result.message is string
+    fail_msg: "Fire-and-forget mode should return basic structure"
+
+- name: Test module with wait for completion (no updates scenario)
+  microsoft.mecm.win_sccm_install_updates:
+    wait_for_completion: true
+    timeout_minutes: 5
+  register: wait_no_updates_result
+
+- name: Verify wait-for-completion mode structure when no updates
+  assert:
+    that:
+      - wait_no_updates_result is not failed
+      - wait_no_updates_result.changed is defined
+      - wait_no_updates_result.installed_updates is defined
+      - wait_no_updates_result.installed_updates is iterable
+      - wait_no_updates_result.failed_updates is defined 
+      - wait_no_updates_result.failed_updates is iterable
+      - wait_no_updates_result.reboot_required is defined
+      - wait_no_updates_result.reboot_required is boolean
+      - wait_no_updates_result.timeout_occurred is defined
+      - wait_no_updates_result.timeout_occurred is boolean
+      - wait_no_updates_result.total_updates_processed is defined
+      - wait_no_updates_result.total_updates_processed is number
+      - wait_no_updates_result.installation_duration is defined
+      - wait_no_updates_result.installation_duration is number
+    fail_msg: "Wait-for-completion mode should return full result structure"
+
+- name: Test parameter validation - invalid timeout
+  microsoft.mecm.win_sccm_install_updates:
+    timeout_minutes: -1
+  register: invalid_timeout_result
+  ignore_errors: true
+
+- name: Verify parameter validation
+  assert:
+    that:
+      - invalid_timeout_result is failed
+    fail_msg: "Invalid parameters should cause module failure"
+
+- name: Test specific update IDs parameter (empty list)
+  microsoft.mecm.win_sccm_install_updates:
+    update_ids: []
+    wait_for_completion: true
+    timeout_minutes: 2
+  register: empty_ids_result
+
+- name: Verify empty update IDs handling
+  assert:
+    that:
+      - empty_ids_result is not failed
+      - empty_ids_result.total_updates_processed >= 0
+    fail_msg: "Empty update IDs should not cause failure"
+
+- name: Test categories parameter
+  microsoft.mecm.win_sccm_install_updates:
+    categories: ["Security", "Critical"]
+    wait_for_completion: true
+    timeout_minutes: 2
+  register: categories_result
+
+- name: Verify categories parameter handling
+  assert:
+    that:
+      - categories_result is not failed
+      - categories_result.total_updates_processed >= 0
+    fail_msg: "Categories filtering should work without errors"
+
+- name: Test reboot parameter combinations
+  microsoft.mecm.win_sccm_install_updates:
+    allow_reboot: false
+    reboot_timeout_minutes: 5
+    wait_for_completion: true
+    timeout_minutes: 2
+  register: reboot_config_result
+
+- name: Verify reboot configuration
+  assert:
+    that:
+      - reboot_config_result is not failed
+      - reboot_config_result.reboot_required is boolean
+    fail_msg: "Reboot configuration should be handled properly"
+
+- name: Display test results summary
+  debug:
+    msg: |
+      Test Summary:
+      - Fire-and-forget mode: {{ 'PASS' if not no_updates_result.failed else 'FAIL' }}
+      - Wait-for-completion mode: {{ 'PASS' if not wait_no_updates_result.failed else 'FAIL' }}
+      - Parameter validation: {{ 'PASS' if invalid_timeout_result.failed else 'FAIL' }}
+      - Update IDs filtering: {{ 'PASS' if not empty_ids_result.failed else 'FAIL' }}
+      - Categories filtering: {{ 'PASS' if not categories_result.failed else 'FAIL' }}
+      - Reboot configuration: {{ 'PASS' if not reboot_config_result.failed else 'FAIL' }}
+      
+      Module Behavior Analysis:
+      - Updates processed: {{ wait_no_updates_result.total_updates_processed }}
+      - Reboot required: {{ wait_no_updates_result.reboot_required }}
+      - Execution time: {{ wait_no_updates_result.installation_duration }}s
+
+- name: Test edge case - very short timeout
+  microsoft.mecm.win_sccm_install_updates:
+    timeout_minutes: 1
+    wait_for_completion: true
+  register: short_timeout_result
+  ignore_errors: true
+
+- name: Verify timeout handling
+  assert:
+    that:
+      - short_timeout_result.timeout_occurred is defined
+      - short_timeout_result.timeout_occurred is boolean
+    fail_msg: "Timeout behavior should be properly handled"
+  when: short_timeout_result is not failed
+
+- name: Test check mode (should fail since not supported)
+  microsoft.mecm.win_sccm_install_updates:
+  register: check_mode_result
+  check_mode: true
+  ignore_errors: true
+
+- name: Verify check mode is not supported
+  assert:
+    that:
+      - check_mode_result is skipped
+    fail_msg: "Check mode should not be supported for this module"
+
+- name: Performance test - measure module execution time
+  block:
+    - name: Record start time
+      set_fact:
+        perf_start_time: "{{ ansible_date_time.epoch }}"
+    
+    - name: Run module for performance measurement
+      microsoft.mecm.win_sccm_install_updates:
+        wait_for_completion: true
+        timeout_minutes: 3
+      register: perf_result
+    
+    - name: Calculate execution time
+      set_fact:
+        perf_execution_time: "{{ ansible_date_time.epoch | int - perf_start_time | int }}"
+    
+    - name: Verify reasonable execution time
+      assert:
+        that:
+          - perf_execution_time | int < 300  # Less than 5 minutes for no-update scenario
+        fail_msg: "Module execution time should be reasonable for no-update scenarios"
+    
+    - name: Display performance metrics
+      debug:
+        msg: |
+          Performance Metrics:
+          - Total execution time: {{ perf_execution_time }}s
+          - Module reported duration: {{ perf_result.installation_duration }}s
+          - Updates processed: {{ perf_result.total_updates_processed }}
+          - Performance: {{ 'ACCEPTABLE' if perf_execution_time | int < 60 else 'SLOW' }}
+
+- name: Comprehensive result validation
+  assert:
+    that:
+      # Basic structure validation
+      - wait_no_updates_result.installed_updates | length >= 0
+      - wait_no_updates_result.failed_updates | length >= 0
+      - wait_no_updates_result.total_updates_processed >= 0
+      - wait_no_updates_result.installation_duration >= 0
+      
+      # Type validation
+      - wait_no_updates_result.reboot_required is boolean
+      - wait_no_updates_result.timeout_occurred is boolean
+      - wait_no_updates_result.changed is boolean
+      
+      # Logical validation
+      - (wait_no_updates_result.installed_updates | length) + (wait_no_updates_result.failed_updates | length) <= wait_no_updates_result.total_updates_processed
+      
+    fail_msg: "Module return values should be consistent and properly typed"
+
+- name: Final integration test summary
+  debug:
+    msg: |
+      ✅ SCCM Update Installation Module Integration Tests Complete
+      
+      Results:
+      - SCCM Client Status: {{ sccm_service_check.state | upper }}
+      - Module Structure: VALIDATED
+      - Parameter Handling: VALIDATED  
+      - Error Conditions: VALIDATED
+      - Performance: {{ 'ACCEPTABLE' if perf_execution_time | int < 60 else 'NEEDS_REVIEW' }}
+      
+      Module Ready For:
+      - Production deployment with no available updates ✓
+      - Fire-and-forget operations ✓
+      - Wait-for-completion operations ✓
+      - Parameter validation ✓
+      - Error handling ✓

@@ -1,0 +1,189 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: win_sccm_install_updates
+  short_description: Install deployed software updates on SCCM clients with intelligent progress monitoring
+  description:
+    - Orchestrates the installation of deployed software updates on Windows SCCM clients.
+    - Handles timeouts, reboot requirements, and provides detailed installation results.
+  version_added: "0.1.0"
+  requirements:
+    - SCCM Client installed and running
+    - Administrative access to trigger update installations
+  options:
+    wait_for_completion:
+      description:
+        - Whether to wait for update installation to complete before returning.
+        - When true, module polls installation progress and returns detailed results.
+        - When false, triggers installation and returns immediately (fire-and-forget).
+      required: false
+      type: bool
+      default: true
+    timeout_minutes:
+      description:
+        - Maximum time to wait for update installation completion in minutes.
+        - Only used when wait_for_completion is true.
+        - Recommended values are 30-120 minutes depending on update size and count.
+      required: false
+      type: int
+      default: 60
+    allow_reboot:
+      description:
+        - Whether to allow automatic system reboot if required by installed updates.
+        - When true, system will reboot automatically if updates require it.
+        - When false, reboot_required will be set but no reboot will occur.
+      required: false
+      type: bool
+      default: false
+    reboot_timeout_minutes:
+      description:
+        - Timeout for system reboot process in minutes.
+        - Only used when allow_reboot is true and reboot is required.
+      required: false
+      type: int
+      default: 15
+    update_ids:
+      description:
+        - List of specific update IDs or Article IDs to install.
+        - If not specified, all available updates will be installed.
+        - Can contain UpdateID (GUID) or ArticleID (KB number) values.
+      required: false
+      type: list
+      elements: str
+    categories:
+      description:
+        - List of update categories to filter installations.
+        - Basic string matching against update names.
+        - 'Examples include "Security", "Critical", and "Definition Updates".'
+      required: false
+      type: list
+      elements: str
+  notes:
+    - This module requires an active SCCM client with the CcmExec service running.
+    - The module does not support check mode as update installation is not idempotent by nature.
+    - Installation progress is monitored by polling EvaluationState changes in CCM_SoftwareUpdate WMI class.
+    - "B(Performance): Large numbers of updates can take significant time - adjust timeout_minutes accordingly."
+    - "B(Reboots): The module can handle reboot requirements but allow_reboot must be explicitly enabled."
+    - "B(Timeout Behavior): On timeout, the module returns partial results showing completed vs in-progress installations."
+    - "B(Fire-and-Forget): When wait_for_completion=false, no installation results are provided as the operation is asynchronous."
+  author:
+    - "Ansible Community (@ansible-community)"
+
+EXAMPLES: |
+  - name: Install all available updates and wait for completion
+    microsoft.mecm.win_sccm_install_updates:
+      wait_for_completion: true
+      timeout_minutes: 90
+
+  - name: Install specific security updates with automatic reboot
+    microsoft.mecm.win_sccm_install_updates:
+      categories: ["Security"]
+      allow_reboot: true
+      reboot_timeout_minutes: 10
+
+  - name: Install updates by KB article ID
+    microsoft.mecm.win_sccm_install_updates:
+      update_ids:
+        - "KB5000001"
+        - "KB5000002"
+      timeout_minutes: 45
+
+  - name: Fire-and-forget installation (immediate return)
+    microsoft.mecm.win_sccm_install_updates:
+      wait_for_completion: false
+
+  - name: Install with extended timeout for large updates
+    microsoft.mecm.win_sccm_install_updates:
+      timeout_minutes: 180
+      allow_reboot: false
+
+  - name: Complete patching workflow with application verification
+    block:
+      - name: Install updates and reboot if needed
+        microsoft.mecm.win_sccm_install_updates:
+          wait_for_completion: true
+          allow_reboot: true
+          timeout_minutes: 120
+        register: update_result
+
+      - name: Verify application health after patching
+        win_service:
+          name: "MyApplication"
+          state: started
+        when: update_result.reboot_required
+
+      - name: Report patching results
+        debug:
+          msg: |
+            Updates installed: {{ update_result.installed_updates | length }}
+            Updates failed: {{ update_result.failed_updates | length }}
+            Reboot required: {{ update_result.reboot_required }}
+            Installation duration: {{ update_result.installation_duration }}s
+
+RETURN:
+  installed_updates:
+    description: List of updates that were successfully installed
+    returned: when wait_for_completion=true
+    type: list
+    elements: dict
+    contains:
+      name:
+        description: Update display name
+        type: str
+        sample: "2024-01 Security Update for Windows Server 2022"
+      article_id:
+        description: KB article number
+        type: str
+        sample: "5000001"
+      update_id:
+        description: Unique update identifier
+        type: str
+        sample: "12345678-1234-1234-1234-123456789012"
+      reboot_required:
+        description: Whether this update requires a reboot
+        type: bool
+        sample: true
+    sample:
+      - name: "2024-01 Security Update for Windows Server 2022"
+        article_id: "5000001"
+        update_id: "12345678-1234-1234-1234-123456789012"
+        reboot_required: true
+  failed_updates:
+    description: List of updates that failed to install
+    returned: when wait_for_completion=true
+    type: list
+    elements: dict
+    sample: []
+  reboot_required:
+    description: Whether a system reboot is required after installation
+    returned: always
+    type: bool
+    sample: true
+  timeout_occurred:
+    description: Whether the installation process timed out
+    returned: when wait_for_completion=true
+    type: bool
+    sample: false
+  total_updates_processed:
+    description: Total number of updates that were processed for installation
+    returned: always
+    type: int
+    sample: 5
+  installation_duration:
+    description: Time taken for the installation process in seconds
+    returned: always
+    type: int
+    sample: 1800
+  message:
+    description: Human-readable message describing the installation result
+    returned: always
+    type: str
+    sample: "Updates installed successfully. System reboot required but not allowed by allow_reboot parameter."
+  warnings:
+    description: List of non-fatal warnings that occurred during execution
+    returned: when applicable
+    type: list
+    elements: str
+    sample: ["Failed to initiate reboot: Access denied"]
