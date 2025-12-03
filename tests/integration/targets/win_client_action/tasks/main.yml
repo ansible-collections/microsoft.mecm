@@ -1,0 +1,15 @@
+---
+- name: Gather facts
+  ansible.builtin.setup: {}
+
+- name: Trigger action against a collection
+  microsoft.mecm.client_action:
+    site_code: "{{ test_site_code }}"
+    collection_name: All Systems
+    action: RequestMachinePolicyNow
+
+- name: Trigger action against a device
+  microsoft.mecm.client_action:
+    site_code: "{{ test_site_code }}"
+    device_name: "{{ ansible_hostname }}"
+    action: RequestMachinePolicyNow
