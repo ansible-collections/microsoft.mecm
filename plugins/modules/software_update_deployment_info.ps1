@@ -80,12 +80,7 @@ $site_code = $module.Params.site_code
 
 # Setup PS environment
 Import-CMPsModule -module $module
-if (Test-CMSiteDrive -SiteCode $site_code) {
-    Set-Location -LiteralPath "$($site_code):\"
-}
-else {
-    $module.FailJson("Failed to find the site PS drive for site code $($site_code)")
-}
+Test-CMSiteNameAndConnect -SiteCode $site_code -Module $module
 
 # Lookup deployments
 $deployment_objects = @()
