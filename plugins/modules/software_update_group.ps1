@@ -167,12 +167,7 @@ $id = $module.Params.id
 
 # Setup PS environment
 Import-CMPsModule -module $module
-if (Test-CMSiteDrive -SiteCode $site_code) {
-    Set-Location -LiteralPath "$($site_code):\"
-}
-else {
-    $module.FailJson("Failed to connect to CM PS drive for site code $($site_code). It does not exist or is not accessible.")
-}
+Test-CMSiteNameAndConnect -module $module -site_code $site_code
 
 # Check if the software update group exists
 $software_update_group = Get-SoftwareUpdateGroupObject `
@@ -198,7 +193,7 @@ elseif ($state -eq "present") {
         Complete-SUGUpdate -module $module -sug $software_update_group -updates $updates
     }
     else {
-        if ($null -eq $module.params.name) {
+        if ($null -eq $module.Params.name) {
             $module.FailJson("The name parameter is required when creating a new software update group.")
         }
         if ($updates.Count -eq 0) {

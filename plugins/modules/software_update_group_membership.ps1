@@ -162,12 +162,7 @@ $group_id = $module.Params.group_id
 
 # Setup PS environment
 Import-CMPsModule -module $module
-if (Test-CMSiteDrive -SiteCode $site_code) {
-    Set-Location -LiteralPath "$($site_code):\"
-}
-else {
-    $module.FailJson("Failed to connect to CM PS drive for site code $($site_code). It does not exist or is not accessible.")
-}
+Test-CMSiteNameAndConnect -module $module -site_code $site_code
 
 # Get the software update group
 $sug = Get-SoftwareUpdateGroupObject `

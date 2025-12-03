@@ -29,12 +29,7 @@ $id = $module.Params.id
 
 # Setup PS environment
 Import-CMPsModule -module $module
-if (Test-CMSiteDrive -SiteCode $site_code) {
-    Set-Location -LiteralPath "$($site_code):\"
-}
-else {
-    $module.FailJson("Failed to connect to CM PS drive for site code $($site_code): $($_.Exception.Message)")
-}
+Test-CMSiteNameAndConnect -module $module -site_code $site_code
 
 # Setup cmdlet parameters
 $cmdlet_params = @{}
@@ -51,6 +46,10 @@ try {
 }
 catch {
     $module.FailJson("Failed to get software update groups: $($_.Exception.Message)", $_)
+}
+
+if ($null -eq $software_update_groups) {
+    $module.ExitJson()
 }
 
 # Format output. Dumping the messages to JSON results in a ton of data, so we need to pick and choose which properties to include.
