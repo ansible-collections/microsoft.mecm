@@ -114,11 +114,9 @@ function Complete-SUGUpdate {
             clear_superseded_updates = "ClearSupersededUpdates"
         } -datetime_params @{}
 
-        $updates_to_add = @()
-        foreach ($update in $updates) {
-            if (-not $sug.Updates.Contains($update.CI_ID.ToString())) {
-                $updates_to_add += $update
-            }
+        $updates_to_add = $updates | Where-Object { -not $sug.Updates.Contains($_.CI_ID.ToString()) }
+        if ($null -eq $updates_to_add) {
+            $updates_to_add = @()
         }
         $cmdlet_params.Add("AddSoftwareUpdate", $updates_to_add)
 
@@ -181,13 +179,18 @@ if (($state -eq "absent") -and ($null -ne $software_update_group)) {
     Complete-SUGRemoval -module $module -sug $software_update_group
 }
 elseif ($state -eq "present") {
-    $updates = @()
-    foreach ($update_id in $module.Params.software_update_ids) {
-        $updates += Get-SoftwareUpdateObject -module $module -software_update_id $update_id -throw_error_if_not_found $true
-    }
-    foreach ($update_name in $module.Params.software_update_names) {
-        $updates += Get-SoftwareUpdateObject -module $module -software_update_name $update_name -throw_error_if_not_found $true
-    }
+    $updates = @(
+        if ($null -ne $module.Params.software_update_ids) {
+            $module.Params.software_update_ids | ForEach-Object {
+                Get-SoftwareUpdateObject -module $module -software_update_id $_ -throw_error_if_not_found $true
+            }
+        }
+        if ($null -ne $module.Params.software_update_names) {
+            $module.Params.software_update_names | ForEach-Object {
+                Get-SoftwareUpdateObject -module $module -software_update_name $_ -throw_error_if_not_found $true
+            }
+        }
+    )
 
     if ($null -ne $software_update_group) {
         Complete-SUGUpdate -module $module -sug $software_update_group -updates $updates

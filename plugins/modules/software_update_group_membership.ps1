@@ -20,13 +20,18 @@ function Get-SoftwareUpdatesForMembership {
         $fail_if_not_found = $true
     }
 
-    $updates = @()
-    foreach ($update_id in $module.Params.software_update_ids) {
-        $updates += Get-SoftwareUpdateObject -module $module -software_update_id $update_id -throw_error_if_not_found $fail_if_not_found
-    }
-    foreach ($update_name in $module.Params.software_update_names) {
-        $updates += Get-SoftwareUpdateObject -module $module -software_update_name $update_name -throw_error_if_not_found $fail_if_not_found
-    }
+    $updates = @(
+        if ($null -ne $module.Params.software_update_ids) {
+            $module.Params.software_update_ids | ForEach-Object {
+                Get-SoftwareUpdateObject -module $module -software_update_id $_ -throw_error_if_not_found $fail_if_not_found
+            }
+        }
+        if ($null -ne $module.Params.software_update_names) {
+            $module.Params.software_update_names | ForEach-Object {
+                Get-SoftwareUpdateObject -module $module -software_update_name $_ -throw_error_if_not_found $fail_if_not_found
+            }
+        }
+    )
     return $updates
 }
 
@@ -38,14 +43,9 @@ function Complete-SURemoval {
         [Parameter(Mandatory = $true)][object]$sug,
         [Parameter(Mandatory = $true)][array]$updates
     )
-    $updates_to_remove = @()
-    foreach ($update in $updates) {
-        if ($sug.Updates.Contains($update.CI_ID)) {
-            $updates_to_remove += $update
-        }
-    }
+    $updates_to_remove = $updates | Where-Object { $sug.Updates.Contains($_.CI_ID) }
 
-    if ($updates_to_remove.Count -eq 0) {
+    if (($updates_to_remove.Count -eq 0) -or ($null -eq $updates_to_remove)) {
         return
     }
 
@@ -68,14 +68,8 @@ function Complete-SUPresent {
         [Parameter(Mandatory = $true)][object]$sug,
         [Parameter(Mandatory = $true)][array]$updates
     )
-    $updates_to_add = @()
-    foreach ($update in $updates) {
-        if (-not $sug.Updates.Contains($update.CI_ID)) {
-            $updates_to_add += $update
-        }
-    }
-
-    if ($updates_to_add.Count -eq 0) {
+    $updates_to_add = $updates | Where-Object { -not $sug.Updates.Contains($_.CI_ID) }
+    if (($null -eq $updates_to_add) -or ($updates_to_add.Count -eq 0)) {
         return
     }
 
@@ -103,20 +97,24 @@ function Complete-SUSet {
     $final_update_ids = @()
 
     #figure out which updates need to be added, and track the IDs for updates that should be in the final list
-    foreach ($update in $updates) {
-        if (-not $sug.Updates.Contains($update.CI_ID)) {
-            $updates_to_add += $update
-        }
-        $final_update_ids += $update.CI_ID
+    $updates_to_add = $updates | Where-Object { -not $sug.Updates.Contains($_.CI_ID) }
+    if ($null -eq $updates_to_add) {
+        $updates_to_add = @()
+    }
+
+    $final_update_ids = $updates_to_add | ForEach-Object { $_.CI_ID }
+    if ($null -eq $final_update_ids) {
+        $final_update_ids = @()
     }
 
     # figure out which updates need to be removed
-    foreach ($update_id in $sug.Updates) {
-        if (-not $final_update_ids.Contains($update_id)) {
-            $updates_to_remove += Get-SoftwareUpdateObject `
-                -module $module `
-                -software_update_id $update_id
-        }
+    $updates_to_remove = $sug.Updates | Where-Object {
+        -not $final_update_ids.Contains($_)
+    } | ForEach-Object {
+        Get-SoftwareUpdateObject -module $module -software_update_id $_
+    }
+    if ($null -eq $updates_to_remove) {
+        $updates_to_remove = @()
     }
 
     # set the final list of updates in the group. First add the updates that need to be added,

@@ -53,34 +53,35 @@ if ($null -eq $software_update_groups) {
 }
 
 # Format output. Dumping the messages to JSON results in a ton of data, so we need to pick and choose which properties to include.
-$software_update_groups_formatted = @()
-foreach ($software_update_group in $software_update_groups) {
-    $software_update_groups_formatted += @{
-        name = $software_update_group.LocalizedDisplayName
-        id = $software_update_group.CI_ID.ToString()
-        updates = $software_update_group.Updates
-        contains_expired_updates = $software_update_group.ContainsExpiredUpdates
-        contains_superseded_updates = $software_update_group.ContainsSupersededUpdates
-        created_by = $software_update_group.CreatedBy
-        description = $software_update_group.LocalizedDescription
-        created_time = Format-DateTimeAsStringSafely -dateTimeObject $software_update_group.DateCreated
-        is_bundle = $software_update_group.IsBundle
-        is_deployed = $software_update_group.IsDeployed
-        is_digest = $software_update_group.IsDigest
-        is_enabled = $software_update_group.IsEnabled
-        is_expired = $software_update_group.IsExpired
-        is_hidden = $software_update_group.IsHidden
-        is_latest = $software_update_group.IsLatest
-        is_provisioned = $software_update_group.IsProvisioned
-        is_quarantined = $software_update_group.IsQuarantined
-        is_superseded = $software_update_group.IsSuperseded
-        is_user_defined = $software_update_group.IsUserDefined
-        last_modified_by = $software_update_group.LastModifiedBy
-        last_modified_time = Format-DateTimeAsStringSafely -dateTimeObject $software_update_group.DateLastModified
-        last_status_time = Format-DateTimeAsStringSafely -dateTimeObject $software_update_group.LastStatusTime
-        effective_date = Format-DateTimeAsStringSafely -dateTimeObject $software_update_group.EffectiveDate
+$software_update_groups_formatted = $software_update_groups | ForEach-Object {
+    @{
+        name = $_.LocalizedDisplayName
+        id = $_.CI_ID.ToString()
+        updates = $_.Updates
+        contains_expired_updates = $_.ContainsExpiredUpdates
+        contains_superseded_updates = $_.ContainsSupersededUpdates
+        created_by = $_.CreatedBy
+        description = $_.LocalizedDescription
+        created_time = Format-DateTimeAsStringSafely -dateTimeObject $_.DateCreated
+        is_bundle = $_.IsBundle
+        is_deployed = $_.IsDeployed
+        is_digest = $_.IsDigest
+        is_enabled = $_.IsEnabled
+        is_expired = $_.IsExpired
+        is_hidden = $_.IsHidden
+        is_latest = $_.IsLatest
+        is_provisioned = $_.IsProvisioned
+        is_quarantined = $_.IsQuarantined
+        is_superseded = $_.IsSuperseded
+        is_user_defined = $_.IsUserDefined
+        last_modified_by = $_.LastModifiedBy
+        last_modified_time = Format-DateTimeAsStringSafely -dateTimeObject $_.DateLastModified
+        last_status_time = Format-DateTimeAsStringSafely -dateTimeObject $_.LastStatusTime
+        effective_date = Format-DateTimeAsStringSafely -dateTimeObject $_.EffectiveDate
     }
 }
+if ($null -ne $software_update_groups_formatted) {
+    $module.result.software_update_groups = $software_update_groups_formatted
+}
 
-$module.result.software_update_groups = $software_update_groups_formatted
 $module.ExitJson()
