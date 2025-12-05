@@ -41,10 +41,9 @@ function Complete-SURemoval {
     param (
         [Parameter(Mandatory = $true)][object]$module,
         [Parameter(Mandatory = $true)][object]$sug,
-        [Parameter(Mandatory = $true)][array]$updates
+        [Parameter(Mandatory = $true)][array]$updates_from_params
     )
-    $updates_to_remove = $updates | Where-Object { $sug.Updates.Contains($_.CI_ID) }
-
+    $updates_to_remove = $updates_from_params | Where-Object { $sug.Updates.Contains($_.CI_ID) }
     if (($updates_to_remove.Count -eq 0) -or ($null -eq $updates_to_remove)) {
         return
     }
@@ -52,7 +51,7 @@ function Complete-SURemoval {
     $module.result.changed = $true
     if (-not $module.CheckMode) {
         try {
-            Set-CMSoftwareUpdateGroup -InputObject $sug -RemoveSoftwareUpdate $updates -Force
+            Set-CMSoftwareUpdateGroup -InputObject $sug -RemoveSoftwareUpdate $updates_to_remove -Force
         }
         catch {
             $module.FailJson("Failed to remove software updates from software update group: $($_.Exception.Message)", $_)
@@ -66,9 +65,9 @@ function Complete-SUPresent {
     param (
         [Parameter(Mandatory = $true)][object]$module,
         [Parameter(Mandatory = $true)][object]$sug,
-        [Parameter(Mandatory = $true)][array]$updates
+        [Parameter(Mandatory = $true)][array]$updates_from_params
     )
-    $updates_to_add = $updates | Where-Object { -not $sug.Updates.Contains($_.CI_ID) }
+    $updates_to_add = $updates_from_params | Where-Object { -not $sug.Updates.Contains($_.CI_ID) }
     if (($null -eq $updates_to_add) -or ($updates_to_add.Count -eq 0)) {
         return
     }
@@ -90,28 +89,24 @@ function Complete-SUSet {
     param (
         [Parameter(Mandatory = $true)][object]$module,
         [Parameter(Mandatory = $true)][object]$sug,
-        [Parameter(Mandatory = $true)][array]$updates
+        [Parameter(Mandatory = $true)][array]$updates_from_params
     )
-    $updates_to_add = @()
-    $updates_to_remove = @()
-    $final_update_ids = @()
-
-    #figure out which updates need to be added, and track the IDs for updates that should be in the final list
-    $updates_to_add = $updates | Where-Object { -not $sug.Updates.Contains($_.CI_ID) }
-    if ($null -eq $updates_to_add) {
-        $updates_to_add = @()
-    }
-
-    $final_update_ids = $updates_to_add | ForEach-Object { $_.CI_ID }
+    $final_update_ids = $updates_from_params | ForEach-Object { $_.CI_ID }
     if ($null -eq $final_update_ids) {
         $final_update_ids = @()
     }
 
-    # figure out which updates need to be removed
-    $updates_to_remove = $sug.Updates | Where-Object {
-        -not $final_update_ids.Contains($_)
-    } | ForEach-Object {
-        Get-SoftwareUpdateObject -module $module -software_update_id $_
+    $updates_to_add = $updates_from_params | Where-Object { -not $sug.Updates.Contains($_.CI_ID) }
+    if ($null -eq $updates_to_add) {
+        $updates_to_add = @()
+    }
+
+    $update_ids_to_remove = $sug.Updates | Where-Object { $final_update_ids -notcontains $_ }
+    if ($null -eq $update_ids_to_remove) {
+        $update_ids_to_remove = @()
+    }
+    $updates_to_remove = $update_ids_to_remove | ForEach-Object {
+        Get-SoftwareUpdateObject -module $module -software_update_id $_ -throw_error_if_not_found $false
     }
     if ($null -eq $updates_to_remove) {
         $updates_to_remove = @()
@@ -169,19 +164,19 @@ $sug = Get-SoftwareUpdateGroupObject `
     -software_update_group_id $group_id `
     -throw_error_if_not_found $true
 
-$updates = Get-SoftwareUpdatesForMembership -module $module -state $state
+$updates_from_params = Get-SoftwareUpdatesForMembership -module $module -state $state
 
 # Route to the appropriate function based on the software update group existence
 if ($state -eq "absent") {
-    if ($updates.Count -gt 0) {
-        Complete-SURemoval -module $module -sug $sug -updates $updates
+    if ($updates_from_params.Count -gt 0) {
+        Complete-SURemoval -module $module -sug $sug -updates_from_params $updates_from_params
     }
 }
 elseif ($state -eq "present") {
-    Complete-SUPresent -module $module -sug $sug -updates $updates
+    Complete-SUPresent -module $module -sug $sug -updates_from_params $updates_from_params
 }
 elseif ($state -eq "set") {
-    Complete-SUSet -module $module -sug $sug -updates $updates
+    Complete-SUSet -module $module -sug $sug -updates_from_params $updates_from_params
 }
 
 $module.result.software_update_group = @{

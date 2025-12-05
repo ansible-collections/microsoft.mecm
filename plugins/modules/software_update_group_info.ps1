@@ -53,33 +53,33 @@ if ($null -eq $software_update_groups) {
 }
 
 # Format output. Dumping the messages to JSON results in a ton of data, so we need to pick and choose which properties to include.
-$software_update_groups_formatted = $software_update_groups | ForEach-Object {
-    @{
-        name = $_.LocalizedDisplayName
-        id = $_.CI_ID.ToString()
-        updates = $_.Updates
-        contains_expired_updates = $_.ContainsExpiredUpdates
-        contains_superseded_updates = $_.ContainsSupersededUpdates
-        created_by = $_.CreatedBy
-        description = $_.LocalizedDescription
-        created_time = Format-DateTimeAsStringSafely -dateTimeObject $_.DateCreated
-        is_bundle = $_.IsBundle
-        is_deployed = $_.IsDeployed
-        is_digest = $_.IsDigest
-        is_enabled = $_.IsEnabled
-        is_expired = $_.IsExpired
-        is_hidden = $_.IsHidden
-        is_latest = $_.IsLatest
-        is_provisioned = $_.IsProvisioned
-        is_quarantined = $_.IsQuarantined
-        is_superseded = $_.IsSuperseded
-        is_user_defined = $_.IsUserDefined
-        last_modified_by = $_.LastModifiedBy
-        last_modified_time = Format-DateTimeAsStringSafely -dateTimeObject $_.DateLastModified
-        last_status_time = Format-DateTimeAsStringSafely -dateTimeObject $_.LastStatusTime
-        effective_date = Format-DateTimeAsStringSafely -dateTimeObject $_.EffectiveDate
-    }
-}
+$software_update_groups_formatted = @($software_update_groups | ForEach-Object {
+        @{
+            name = $_.LocalizedDisplayName
+            id = $_.CI_ID.ToString()
+            updates = $_.Updates
+            contains_expired_updates = $_.ContainsExpiredUpdates
+            contains_superseded_updates = $_.ContainsSupersededUpdates
+            created_by = $_.CreatedBy
+            description = $_.LocalizedDescription
+            created_time = Format-DateTimeAsStringSafely -dateTimeObject $_.DateCreated
+            is_bundle = $_.IsBundle
+            is_deployed = $_.IsDeployed
+            is_digest = $_.IsDigest
+            is_enabled = $_.IsEnabled
+            is_expired = $_.IsExpired
+            is_hidden = $_.IsHidden
+            is_latest = $_.IsLatest
+            is_provisioned = $_.IsProvisioned
+            is_quarantined = $_.IsQuarantined
+            is_superseded = $_.IsSuperseded
+            is_user_defined = $_.IsUserDefined
+            last_modified_by = $_.LastModifiedBy
+            last_modified_time = Format-DateTimeAsStringSafely -dateTimeObject $_.DateLastModified
+            last_status_time = Format-DateTimeAsStringSafely -dateTimeObject $_.LastStatusTime
+            effective_date = Format-DateTimeAsStringSafely -dateTimeObject $_.EffectiveDate
+        }
+    })
 if ($null -ne $software_update_groups_formatted) {
     $module.result.software_update_groups = $software_update_groups_formatted
 }
