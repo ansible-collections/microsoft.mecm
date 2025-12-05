@@ -13,10 +13,20 @@ function Get-SoftwareUpdateObject {
     )
     $software_update_object = $null
     if (-not [string]::IsNullOrEmpty($software_update_id)) {
-        $software_update_object = Get-CMSoftwareUpdate -Id "$software_update_id"
+        try {
+            $software_update_object = Get-CMSoftwareUpdate -Id "$software_update_id"
+        }
+        catch {
+            $module.FailJson("Failed to execute Get-CMSoftwareUpdate with ID '$software_update_id': $($_.Exception.Message)", $_)
+        }
     }
     elseif (-not [string]::IsNullOrEmpty($software_update_name)) {
-        $software_update_object = Get-CMSoftwareUpdate -Name "$software_update_name"
+        try {
+            $software_update_object = Get-CMSoftwareUpdate -Name "$software_update_name"
+        }
+        catch {
+            $module.FailJson("Failed to execute Get-CMSoftwareUpdate with Name '$software_update_name': $($_.Exception.Message)", $_)
+        }
     }
     else {
         $module.FailJson("Either software_update_id or software_update_name must be specified for Get-SoftwareUpdateObject")
@@ -40,10 +50,20 @@ function Get-SoftwareUpdateGroupObject {
     )
     $software_update_group_object = $null
     if (-not [string]::IsNullOrEmpty($software_update_group_id)) {
-        $software_update_group_object = Get-CMSoftwareUpdateGroup -Id "$software_update_group_id"
+        try {
+            $software_update_group_object = Get-CMSoftwareUpdateGroup -Id "$software_update_group_id"
+        }
+        catch {
+            $module.FailJson("Failed to execute Get-CMSoftwareUpdateGroup with ID '$software_update_group_id': $($_.Exception.Message)", $_)
+        }
     }
     elseif (-not [string]::IsNullOrEmpty($software_update_group_name)) {
-        $software_update_group_object = Get-CMSoftwareUpdateGroup -Name "$software_update_group_name"
+        try {
+            $software_update_group_object = Get-CMSoftwareUpdateGroup -Name "$software_update_group_name"
+        }
+        catch {
+            $module.FailJson("Failed to execute Get-CMSoftwareUpdateGroup with Name '$software_update_group_name': $($_.Exception.Message)", $_)
+        }
     }
     else {
         $module.FailJson("Either software_update_group_id or software_update_group_name must be specified for Get-SoftwareUpdateGroupObject")
@@ -67,10 +87,20 @@ function Get-CollectionObject {
     )
     $collection_object = $null
     if (-not [string]::IsNullOrEmpty($collection_id)) {
-        $collection_object = Get-CMCollection -Id "$collection_id"
+        try {
+            $collection_object = Get-CMCollection -Id "$collection_id"
+        }
+        catch {
+            $module.FailJson("Failed to execute Get-CMCollection with ID '$collection_id': $($_.Exception.Message)", $_)
+        }
     }
     elseif (-not [string]::IsNullOrEmpty($collection_name)) {
-        $collection_object = Get-CMCollection -Name "$collection_name"
+        try {
+            $collection_object = Get-CMCollection -Name "$collection_name"
+        }
+        catch {
+            $module.FailJson("Failed to execute Get-CMCollection with Name '$collection_name': $($_.Exception.Message)", $_)
+        }
     }
     else {
         $module.FailJson("Either collection_id or collection_name must be specified for Get-CollectionObject")

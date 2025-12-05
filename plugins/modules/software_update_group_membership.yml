@@ -1,0 +1,110 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: software_update_group_membership
+  short_description: Manage the software updates in a software update group
+  description:
+    - This module ensures that specific software updates are present in a software update group for a Configuration Manager site.
+    - You can remove, add, or set the absolute list of software updates in the group.
+
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+
+  options:
+    group_name:
+      description:
+        - Specify the name of the software update group to manage.
+      type: str
+      required: false
+    group_id:
+      description:
+        - Specify the ID of the software update group to manage.
+      type: str
+      required: false
+    state:
+      description:
+        - Specify if the software updates should be present, absent, or the absolute list should be set.
+        - C(set) will ensure that only the updates specified are present in the group.
+      type: str
+      required: false
+      default: present
+      choices:
+        - present
+        - absent
+        - set
+    software_update_ids:
+      description:
+        - Specify the IDs of the software updates to ensure are present in the software update group.
+        - Either this option or O(software_update_names) must be specified when O(state) is present.
+      type: list
+      elements: str
+      required: false
+    software_update_names:
+      description:
+        - Specify the names of the software updates to ensure are present in the software update group.
+        - Either this option or O(software_update_ids) must be specified when O(state) is present.
+      type: list
+      elements: str
+      required: false
+
+  author:
+    - Ansible Cloud Team (@ansible-collections)
+
+EXAMPLES: |
+  # Create the PS drive for the site "XYZ"
+  - name: Create the PS drive for the site "XYZ"
+    microsoft.mecm.site_ps_drive:
+      site_code: XYZ
+      state: present
+
+  - name: Create a new software update group with the name "Windows 10" and description "Windows 10 update group"
+    microsoft.mecm.software_update_group:
+      site_code: "XYZ"
+      name: "Windows 10"
+      description: "Windows 10 update group"
+      state: present
+      software_update_ids:
+        - "1234567890"
+
+  - name: Add an update to the group
+    microsoft.mecm.software_update_group_membership:
+      site_code: "XYZ"
+      group_name: "Windows 10"
+      state: present
+      software_update_ids:
+        - "222222222"
+
+  - name: Remove an update from the group
+    microsoft.mecm.software_update_group_membership:
+      site_code: "XYZ"
+      group_name: "Windows 10"
+      state: absent
+      software_update_ids:
+        - "333333333"
+
+  - name: Set the absolute list of updates in the group
+    microsoft.mecm.software_update_group_membership:
+      site_code: "XYZ"
+      group_name: "Windows 10"
+      state: set
+      software_update_ids:
+        - "444444444"
+        - "555555555"
+        - "666666666"
+
+RETURN:
+  software_update_group:
+    description: Identifying information about the software update group.
+    returned: always
+    type: dict
+    sample: |-
+      {
+        "name": "Windows 10",
+        "id": "16777519",
+        "updates": [
+          "1234567890",
+          "222222222"
+        ]
+      }

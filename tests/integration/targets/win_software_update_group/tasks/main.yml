@@ -1,0 +1,150 @@
+---
+- name: Test and cleanup
+  block:
+    - name: Create a new software update group
+      microsoft.mecm.software_update_group: &create_software_update_group
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_software_update_group_name }}"
+        description: Test group created by integration test
+        state: present
+        software_update_ids: "{{ test_update_ids }}"
+      register: _create_sug
+
+    - name: Create a new software update group - idempotence
+      microsoft.mecm.software_update_group: *create_software_update_group
+      register: _create_sug_idempotence
+
+    - name: Gather Info
+      microsoft.mecm.software_update_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_software_update_group_name }}"
+      register: _get_sug_by_name_info
+
+    - name: Check creation
+      ansible.builtin.assert:
+        that:
+          - _create_sug is ansible.builtin.changed
+          - _create_sug_idempotence is not ansible.builtin.changed
+          - _get_sug_by_name_info.software_update_groups | length == 1
+          - _get_sug_by_name_info.software_update_groups[0].name == test_software_update_group_name
+          - _get_sug_by_name_info.software_update_groups[0].id == _create_sug.software_update_group.id
+
+    - name: Update the software update group
+      microsoft.mecm.software_update_group: &update_software_update_group
+        site_code: "{{ test_site_code }}"
+        id: "{{ _create_sug.software_update_group.id }}"
+        name: "{{ test_software_update_group_new_name }}"
+        description: Test group updated by integration test
+      register: _update_sug
+
+    - name: Update the software update group - idempotence
+      microsoft.mecm.software_update_group: *update_software_update_group
+      register: _update_sug_idempotence
+
+    - name: Gather Info by ID
+      microsoft.mecm.software_update_group_info:
+        site_code: "{{ test_site_code }}"
+        id: "{{ _create_sug.software_update_group.id }}"
+      register: _get_sug_by_id_info
+
+    - name: Check update
+      ansible.builtin.assert:
+        that:
+          - _update_sug is ansible.builtin.changed
+          - _update_sug_idempotence is not ansible.builtin.changed
+          - _get_sug_by_id_info.software_update_groups | length == 1
+          - _get_sug_by_id_info.software_update_groups[0].name == test_software_update_group_new_name
+          - _get_sug_by_id_info.software_update_groups[0].id == _create_sug.software_update_group.id
+
+    - name: Remove a software update from the group - not found
+      microsoft.mecm.software_update_group_membership:
+        site_code: "{{ test_site_code }}"
+        group_id: "{{ _create_sug.software_update_group.id }}"
+        state: absent
+        software_update_ids:
+          - "00000000"
+      register: _remove_update_from_sug_not_found
+
+    - name: Remove a software update from the group
+      microsoft.mecm.software_update_group_membership: &remove_update_from_sug
+        site_code: "{{ test_site_code }}"
+        group_id: "{{ _create_sug.software_update_group.id }}"
+        state: absent
+        software_update_ids:
+          - "{{ test_update_ids[0] }}"
+      register: _remove_update_from_sug
+
+    - name: Remove a software update from the group - idempotence
+      microsoft.mecm.software_update_group_membership: *remove_update_from_sug
+      register: _remove_update_from_sug_idempotence
+
+    - name: Add a software update to the group
+      microsoft.mecm.software_update_group_membership: &add_update_to_sug
+        site_code: "{{ test_site_code }}"
+        group_id: "{{ _create_sug.software_update_group.id }}"
+        state: present
+        software_update_ids:
+          - "{{ test_update_ids[0] }}"
+      register: _add_update_to_sug
+
+    - name: Add a software update to the group - idempotence
+      microsoft.mecm.software_update_group_membership: *add_update_to_sug
+      register: _add_update_to_sug_idempotence
+
+    - name: Set the absolute list of updates in the group
+      microsoft.mecm.software_update_group_membership: &set_updates_in_sug
+        site_code: "{{ test_site_code }}"
+        group_id: "{{ _create_sug.software_update_group.id }}"
+        state: set
+        software_update_ids:
+          - "{{ test_update_ids[0] }}"
+      register: _set_updates_in_sug
+
+    - name: Set the absolute list of updates in the group - idempotence
+      microsoft.mecm.software_update_group_membership: *set_updates_in_sug
+      register: _set_updates_in_sug_idempotence
+
+    - name: Check membership changes
+      ansible.builtin.assert:
+        that:
+          - _remove_update_from_sug_not_found is not ansible.builtin.changed
+          - _remove_update_from_sug is ansible.builtin.changed
+          - _remove_update_from_sug_idempotence is not ansible.builtin.changed
+          - _add_update_to_sug is ansible.builtin.changed
+          - _add_update_to_sug_idempotence is not ansible.builtin.changed
+          - _set_updates_in_sug is ansible.builtin.changed
+          - _set_updates_in_sug_idempotence is not ansible.builtin.changed
+          - _remove_update_from_sug.software_update_group.updates | length == 1
+          - _add_update_to_sug.software_update_group.updates | length == 2
+          - _set_updates_in_sug.software_update_group.updates | length == 1
+
+    - name: Remove the software update group
+      microsoft.mecm.software_update_group: &remove_software_update_group
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_software_update_group_new_name }}"
+        state: absent
+      register: _remove_sug
+
+    - name: Remove the software update group - idempotence
+      microsoft.mecm.software_update_group: *remove_software_update_group
+      register: _remove_sug_idempotence
+
+    - name: Check removal
+      ansible.builtin.assert:
+        that:
+          - _remove_sug is ansible.builtin.changed
+          - _remove_sug_idempotence is not ansible.builtin.changed
+
+  always:
+    - name: Remove the software update group by original name
+      microsoft.mecm.software_update_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_software_update_group_name }}"
+        state: absent
+      when: _create_sug.software_update_group.id is not defined
+    - name: Remove the software update group by ID
+      microsoft.mecm.software_update_group:
+        site_code: "{{ test_site_code }}"
+        id: "{{ _create_sug.software_update_group.id }}"
+        state: absent
+      when: _create_sug.software_update_group.id is defined
