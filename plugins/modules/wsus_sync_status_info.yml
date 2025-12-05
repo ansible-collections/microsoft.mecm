@@ -3,7 +3,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 DOCUMENTATION:
-  module: sccm_wsus_sync_status_info
+  module: wsus_sync_status_info
   short_description: Retrieve WSUS synchronization status information from SCCM software update point
   description:
     - Retrieves Windows Server Update Services (WSUS) synchronization status from SCCM software update points.
@@ -36,21 +36,21 @@ DOCUMENTATION:
 
 EXAMPLES: |
   - name: Get WSUS sync status for primary site server
-    microsoft.mecm.sccm_wsus_sync_status_info:
+    microsoft.mecm.wsus_sync_status_info:
       computer_name: "sccm-primary.contoso.com"
     register: wsus_status
 
   - name: Check if WSUS sync was successful
-    microsoft.mecm.sccm_wsus_sync_status_info:
+    microsoft.mecm.wsus_sync_status_info:
       computer_name: "{{ ansible_fqdn }}"
     register: sync_result
     failed_when: sync_result.sync_status == "Failed"
 
   - name: Display sync status information
-    microsoft.mecm.sccm_wsus_sync_status_info:
+    microsoft.mecm.wsus_sync_status_info:
       computer_name: "sccm-primary.contoso.com"
     register: wsus_info
-  
+
   - name: Show sync results
     debug:
       msg: |
@@ -59,7 +59,7 @@ EXAMPLES: |
         Error Count: {{ wsus_info.error_logs | length }}
 
   - name: Monitor WSUS sync health in a loop
-    microsoft.mecm.sccm_wsus_sync_status_info:
+    microsoft.mecm.wsus_sync_status_info:
       computer_name: "sccm-primary.contoso.com"
     register: wsus_check
     until: wsus_check.sync_status == "Success"
@@ -68,14 +68,14 @@ EXAMPLES: |
     when: monitor_wsus_sync | default(false)
 
   - name: Alert on WSUS sync failures
-    microsoft.mecm.sccm_wsus_sync_status_info:
+    microsoft.mecm.wsus_sync_status_info:
       computer_name: "{{ item }}"
     register: sync_status
     loop:
       - "sccm-primary1.contoso.com"
       - "sccm-primary2.contoso.com"
     failed_when: false
-    
+
   - name: Report WSUS sync failures
     debug:
       msg: "WSUS sync failed on {{ item.server_name }}: {{ item.error_logs | join(', ') }}"

@@ -3,7 +3,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 DOCUMENTATION:
-  module: win_sccm_install_updates
+  module: install_updates
   short_description: Install deployed software updates on SCCM clients with intelligent progress monitoring
   description:
     - Orchestrates the installation of deployed software updates on Windows SCCM clients.
@@ -73,36 +73,36 @@ DOCUMENTATION:
 
 EXAMPLES: |
   - name: Install all available updates and wait for completion
-    microsoft.mecm.win_sccm_install_updates:
+    microsoft.mecm.install_updates:
       wait_for_completion: true
       timeout_minutes: 90
 
   - name: Install specific security updates with automatic reboot
-    microsoft.mecm.win_sccm_install_updates:
+    microsoft.mecm.install_updates:
       categories: ["Security"]
       allow_reboot: true
       reboot_timeout_minutes: 10
 
   - name: Install updates by KB article ID
-    microsoft.mecm.win_sccm_install_updates:
+    microsoft.mecm.install_updates:
       update_ids:
         - "KB5000001"
         - "KB5000002"
       timeout_minutes: 45
 
   - name: Fire-and-forget installation (immediate return)
-    microsoft.mecm.win_sccm_install_updates:
+    microsoft.mecm.install_updates:
       wait_for_completion: false
 
   - name: Install with extended timeout for large updates
-    microsoft.mecm.win_sccm_install_updates:
+    microsoft.mecm.install_updates:
       timeout_minutes: 180
       allow_reboot: false
 
   - name: Complete patching workflow with application verification
     block:
       - name: Install updates and reboot if needed
-        microsoft.mecm.win_sccm_install_updates:
+        microsoft.mecm.install_updates:
           wait_for_completion: true
           allow_reboot: true
           timeout_minutes: 120

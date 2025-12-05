@@ -1,5 +1,5 @@
 ---
-# Integration tests for simplified sccm_dp_status_info module
+# Integration tests for simplified dp_status_info module
 
 # --- Gather facts to get hostname information ---
 - name: Gather facts
@@ -16,7 +16,7 @@
 
 # --- Discover SCCM environment (non-fatal) ---
 - name: Query SCCM to gather baseline data
-  microsoft.mecm.sccm_dp_status_info:
+  microsoft.mecm.dp_status_info:
     computer_name: "{{ sccm_server_name }}"
   register: baseline_query
   failed_when: false
@@ -55,7 +55,7 @@
 # -------------------------------
 
 - name: Module should succeed with no computer_name (defaults to localhost)
-  microsoft.mecm.sccm_dp_status_info:
+  microsoft.mecm.dp_status_info:
   register: localhost_param
   failed_when: false
   ignore_errors: true
@@ -86,7 +86,7 @@
 # -------------------------------
 
 - name: Run module with minimal parameters
-  microsoft.mecm.sccm_dp_status_info:
+  microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
   register: basic_run
   failed_when: false
@@ -104,7 +104,7 @@
 # -------------------------------
 
 - name: Run with distribution_point filter
-  microsoft.mecm.sccm_dp_status_info:
+  microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
     distribution_point:
       - "{{ test_dp_name }}"
@@ -124,7 +124,7 @@
 # -------------------------------
 
 - name: Run with package_id filter
-  microsoft.mecm.sccm_dp_status_info:
+  microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
     package_id: "{{ test_package }}"
   register: package_filter_run
@@ -143,7 +143,7 @@
 # -------------------------------
 
 - name: Validate module behavior in check mode
-  microsoft.mecm.sccm_dp_status_info:
+  microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
   register: check_mode_run
   check_mode: true
@@ -162,7 +162,7 @@
 # -------------------------------
 
 - name: Run module with both DP + package filters
-  microsoft.mecm.sccm_dp_status_info:
+  microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
     distribution_point:
       - "{{ test_dp_name }}"
