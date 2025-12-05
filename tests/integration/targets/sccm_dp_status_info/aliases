@@ -1,4 +1,4 @@
-# Integration test aliases for sccm_dp_status_info module
+# Integration test aliases for dp_status_info module
 
 # Requires Windows environment with SCCM
 windows

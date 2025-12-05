@@ -3,7 +3,7 @@
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 DOCUMENTATION:
-  module: sccm_dp_status_info
+  module: dp_status_info
   short_description: Retrieve distribution point status information from SCCM
   description:
     - Retrieves distribution point status information for packages and content from SCCM using Get-CMDistributionStatus.
@@ -45,32 +45,32 @@ DOCUMENTATION:
 
 EXAMPLES: |
   - name: Get status of all packages on all distribution points (localhost)
-    microsoft.mecm.sccm_dp_status_info:
+    microsoft.mecm.dp_status_info:
 
   - name: Get status of all packages on remote SCCM server
-    microsoft.mecm.sccm_dp_status_info:
+    microsoft.mecm.dp_status_info:
       computer_name: "sccm-server.domain.com"
 
   - name: Get status of specific package on all distribution points
-    microsoft.mecm.sccm_dp_status_info:
+    microsoft.mecm.dp_status_info:
       computer_name: "sccm-server.domain.com"
       package_id: "ECO00003"
 
   - name: Get status of all packages on specific distribution points
-    microsoft.mecm.sccm_dp_status_info:
+    microsoft.mecm.dp_status_info:
       computer_name: "sccm-server.domain.com"
       distribution_point:
         - "DP-NYC-01.domain.com"
         - "DP-NYC-02.domain.com"
 
   - name: Get status of specific package on specific distribution point
-    microsoft.mecm.sccm_dp_status_info:
+    microsoft.mecm.dp_status_info:
       computer_name: "sccm-server.domain.com"
       distribution_point: ["DP-NYC-01.domain.com"]
       package_id: "ECO00003"
 
   - name: Check distribution readiness before deployment
-    microsoft.mecm.sccm_dp_status_info:
+    microsoft.mecm.dp_status_info:
       computer_name: "{{ sccm_server }}"
       package_id: "{{ critical_package_id }}"
     register: dp_status

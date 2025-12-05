@@ -1,5 +1,5 @@
 ---
-# Integration tests for sccm_wsus_sync_status_info module
+# Integration tests for wsus_sync_status_info module
 
 # --- Gather facts to get hostname information ---
 - name: Gather facts
@@ -16,7 +16,7 @@
 
 # --- Discover SCCM environment (non-fatal) ---
 - name: Query WSUS sync status to gather baseline data
-  microsoft.mecm.sccm_wsus_sync_status_info:
+  microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ sccm_server_name }}"
   register: baseline_query
   failed_when: false
@@ -42,7 +42,7 @@
 # -------------------------------
 
 - name: Module should fail when computer_name is missing
-  microsoft.mecm.sccm_wsus_sync_status_info:
+  microsoft.mecm.wsus_sync_status_info:
   register: missing_server_param
   failed_when: false
   ignore_errors: true
@@ -54,7 +54,7 @@
     fail_msg: "Module should report missing required computer_name parameter"
 
 - name: Module should fail with invalid computer_name
-  microsoft.mecm.sccm_wsus_sync_status_info:
+  microsoft.mecm.wsus_sync_status_info:
     computer_name: "invalid-server-that-does-not-exist.invalid"
   register: invalid_server_param
   failed_when: false
@@ -72,7 +72,7 @@
 # -------------------------------
 
 - name: Run module with valid computer_name
-  microsoft.mecm.sccm_wsus_sync_status_info:
+  microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ test_server_name }}"
   register: basic_run
   failed_when: false
@@ -99,7 +99,7 @@
 # -------------------------------
 
 - name: Validate module behavior in check mode
-  microsoft.mecm.sccm_wsus_sync_status_info:
+  microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ test_server_name }}"
   register: check_mode_run
   check_mode: true
@@ -122,7 +122,7 @@
 # -------------------------------
 
 - name: Run module a second time to test idempotency
-  microsoft.mecm.sccm_wsus_sync_status_info:
+  microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ test_server_name }}"
   register: second_run
   failed_when: false
@@ -194,7 +194,7 @@
 # -------------------------------
 
 - name: Test with short hostname format
-  microsoft.mecm.sccm_wsus_sync_status_info:
+  microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ ansible_hostname }}"
   register: short_hostname_run
   failed_when: false
@@ -214,7 +214,7 @@
 # -------------------------------
 
 - name: Test module resilience with non-existent server
-  microsoft.mecm.sccm_wsus_sync_status_info:
+  microsoft.mecm.wsus_sync_status_info:
     computer_name: "non-existent-server.test.local"
   register: nonexistent_server_run
   failed_when: false
@@ -239,7 +239,7 @@
       - Server: {{ test_server_name }}
       - SUP Available: {{ has_real_sup }}
       - Baseline Status: {{ baseline_sync_status }}
-      
+
       Test Results:
       - Missing parameter validation: {{ 'PASS' if 'missing required arguments: computer_name' in (missing_server_param.msg | default('')) else 'FAIL' }}
       - Basic execution: {{ 'PASS' if basic_run is not failed else 'FAIL' }}
@@ -247,7 +247,7 @@
       - Idempotency: {{ 'PASS' if (second_run is not failed and second_run.changed == false) else 'FAIL' }}
       - Return value structure: {{ 'PASS' if (basic_run is not failed and basic_run.server_name is defined) else 'FAIL' }}
       - Invalid server handling: {{ 'PASS' if invalid_server_param is failed else 'FAIL' }}
-      
+
       Module Output (when successful):
       - Server Name: {{ basic_run.server_name | default('N/A') }}
       - Sync Status: {{ basic_run.sync_status | default('N/A') }}
