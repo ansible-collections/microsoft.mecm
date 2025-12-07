@@ -58,9 +58,6 @@ DOCUMENTATION:
       type: str
       required: false
 
-  author:
-    - Ansible Cloud Team (@ansible-collections)
-
 EXAMPLES: |
   # This should return a single deployment object, but MECM does not prevent you from creating multiple deployments with the same
   # software update and collection, so if this exists in your environment you will get multiple deployment objects.

@@ -76,9 +76,6 @@ DOCUMENTATION:
       required: false
       default: false
 
-  author:
-    - Ansible Cloud Team (@ansible-collections)
-
 EXAMPLES: |
   # Create the PS drive for the site "XYZ"
   - name: Create the PS drive for the site "XYZ"

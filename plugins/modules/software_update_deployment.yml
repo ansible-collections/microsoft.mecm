@@ -326,9 +326,6 @@ DOCUMENTATION:
       type: str
       required: false
 
-  author:
-    - Ansible Cloud Team (@ansible-collections)
-
 EXAMPLES: |
   - name: Create software update deployment
     microsoft.mecm.software_update_deployment: &create-deploy
