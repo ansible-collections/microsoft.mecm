@@ -1,10 +1,10 @@
 ---
-# Gather facts for hostname information  
+# Gather facts for hostname information
 - name: Gather facts
   setup:
 
-- name: Test sccm_backups_status_info module with different server name
-  microsoft.mecm.sccm_backups_status_info:
+- name: Test backups_status_info module with different server name
+  microsoft.mecm.backups_status_info:
     computer_name: "nonexistent-server.example.com"
     site_name: "{{ test_site_name }}"
   register: different_server_result
@@ -16,8 +16,8 @@
       - different_server_result.msg is not defined or different_server_result.msg is not search("does not match site server")
     fail_msg: "Module should not fail due to server name validation"
 
-- name: Test sccm_backups_status_info module with valid server
-  microsoft.mecm.sccm_backups_status_info:
+- name: Test backups_status_info module with valid server
+  microsoft.mecm.backups_status_info:
     computer_name: "{{ ansible_hostname }}.{{ ansible_domain | default('domain.com') }}"
     site_name: "{{ test_site_name }}"
   register: backup_status_result
@@ -60,7 +60,7 @@
   when: backup_status_result is not failed
 
 - name: Test check mode functionality
-  microsoft.mecm.sccm_backups_status_info:
+  microsoft.mecm.backups_status_info:
     computer_name: "{{ ansible_hostname }}.{{ ansible_domain }}"
     site_name: "{{ test_site_name }}"
   register: check_mode_result
@@ -86,13 +86,13 @@
           Location: {{ backup_status_result.backup_status.backup_location | default('Not Configured') }}
           Days Bitmask: {{ backup_status_result.backup_status.days_of_week_bitmask }}
       when: backup_status_result is not failed
-    
+
     - name: Verify disabled backup task is properly reported
       assert:
         that:
           - backup_status_result.backup_status.last_backup_status in valid_backup_statuses or backup_status_result.backup_status.task_enabled == false
         fail_msg: "Disabled backup tasks should be properly identified"
-      when: 
+      when:
         - backup_status_result is not failed
         - backup_status_result.backup_status.task_enabled == false
 

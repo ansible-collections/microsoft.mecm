@@ -1,5 +1,5 @@
 ---
-# Default test variables for sccm_dp_status_info module testing
+# Default test variables for dp_status_info module testing
 
 # SCCM Server Configuration - will be set dynamically in tasks
 sccm_server_name: ""
@@ -7,7 +7,7 @@ sccm_server_name: ""
 # Distribution Point Configuration - will be set dynamically in tasks
 test_distribution_point: ""
 
-# Package Configuration - using actually distributed package 
+# Package Configuration - using actually distributed package
 test_package_id: ECO00003
 
 # Test environment flags
