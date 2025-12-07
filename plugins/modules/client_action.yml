@@ -82,9 +82,6 @@ DOCUMENTATION:
       type: str
       required: true
 
-  author:
-    - Ansible Cloud Team (@ansible-collections)
-
 EXAMPLES: |
   - name: Start Endpoint Protection Full Scan on a device
     microsoft.mecm.client_action:
