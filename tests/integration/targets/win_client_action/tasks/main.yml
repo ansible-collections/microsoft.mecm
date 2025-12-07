@@ -7,9 +7,17 @@
     site_code: "{{ test_site_code }}"
     collection_name: All Systems
     action: RequestMachinePolicyNow
+  register: _action_result_collection
 
 - name: Trigger action against a device
   microsoft.mecm.client_action:
     site_code: "{{ test_site_code }}"
     device_name: "{{ ansible_hostname }}"
-    action: RequestMachinePolicyNow
+    action: EndpointProtectionQuickScan
+  register: _action_result_device
+
+- name: Check output
+  ansible.builtin.assert:
+    that:
+      - _action_result_collection is ansible.builtin.changed
+      - _action_result_device is ansible.builtin.changed
