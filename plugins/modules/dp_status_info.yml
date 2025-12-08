@@ -11,6 +11,8 @@ DOCUMENTATION:
     - Supports filtering by specific distribution points or package IDs for targeted monitoring.
     - Read-only module that provides visibility into SCCM distribution infrastructure health.
   version_added: "0.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
   requirements:
     - SCCM PowerShell module (ConfigurationManager)
     - Administrative access to SCCM site server
@@ -33,12 +35,6 @@ DOCUMENTATION:
         - Specific package ID to query distribution status for.
         - If not specified, all packages will be queried for the target distribution points.
       required: false
-      type: str
-    site_code:
-      description:
-        - The SCCM site code (usually 3 characters) to connect to.
-        - This is the primary site code where distribution points are managed.
-      required: true
       type: str
   notes:
     - This module requires the SCCM Console to be installed on the target machine.

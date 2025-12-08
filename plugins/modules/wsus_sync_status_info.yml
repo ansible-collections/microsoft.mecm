@@ -11,6 +11,8 @@ DOCUMENTATION:
     - Supports multiple fallback methods to retrieve sync status using WMI queries and PowerShell cmdlets.
     - Read-only module that provides visibility into software update point synchronization health.
   version_added: "0.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
   requirements:
     - SCCM PowerShell module (ConfigurationManager)
     - Administrative access to SCCM site server
@@ -21,12 +23,6 @@ DOCUMENTATION:
         - The FQDN of the primary site server that hosts the software update point.
         - This must be a fully qualified domain name of the SCCM primary site server.
         - The server must have a configured software update point role.
-      required: true
-      type: str
-    site_code:
-      description:
-        - The SCCM site code (usually 3 characters) to connect to.
-        - This is the primary site code where the software update point is configured.
       required: true
       type: str
   notes:
