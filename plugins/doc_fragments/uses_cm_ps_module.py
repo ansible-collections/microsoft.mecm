@@ -17,6 +17,13 @@ notes:
     - This module requires a PS drive for the CM site being managed. You can use the
       m(microsoft.mecm.site_ps_drive) module to create the PS drive.
 
+author:
+    - Ansible Cloud Team (@ansible-collections)
+
+requirements:
+    - Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to SCCM site server
+
 options:
     site_code:
         description:

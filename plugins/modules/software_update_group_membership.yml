@@ -49,9 +49,6 @@ DOCUMENTATION:
       elements: str
       required: false
 
-  author:
-    - Ansible Cloud Team (@ansible-collections)
-
 EXAMPLES: |
   # Create the PS drive for the site "XYZ"
   - name: Create the PS drive for the site "XYZ"
