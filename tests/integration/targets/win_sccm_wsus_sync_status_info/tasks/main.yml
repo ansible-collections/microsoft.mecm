@@ -18,6 +18,7 @@
 - name: Query WSUS sync status to gather baseline data
   microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ sccm_server_name }}"
+    site_code: "{{ test_site_code }}"
   register: baseline_query
   failed_when: false
   ignore_errors: true
@@ -43,6 +44,7 @@
 
 - name: Module should fail when computer_name is missing
   microsoft.mecm.wsus_sync_status_info:
+    site_code: "{{ test_site_code }}"
   register: missing_server_param
   failed_when: false
   ignore_errors: true
@@ -56,6 +58,7 @@
 - name: Module should fail with invalid computer_name
   microsoft.mecm.wsus_sync_status_info:
     computer_name: "invalid-server-that-does-not-exist.invalid"
+    site_code: "{{ test_site_code }}"
   register: invalid_server_param
   failed_when: false
   ignore_errors: true
@@ -74,6 +77,7 @@
 - name: Run module with valid computer_name
   microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ test_server_name }}"
+    site_code: "{{ test_site_code }}"
   register: basic_run
   failed_when: false
   ignore_errors: true
@@ -101,6 +105,7 @@
 - name: Validate module behavior in check mode
   microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ test_server_name }}"
+    site_code: "{{ test_site_code }}"
   register: check_mode_run
   check_mode: true
   failed_when: false
@@ -124,6 +129,7 @@
 - name: Run module a second time to test idempotency
   microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ test_server_name }}"
+    site_code: "{{ test_site_code }}"
   register: second_run
   failed_when: false
   ignore_errors: true
@@ -196,6 +202,7 @@
 - name: Test with short hostname format
   microsoft.mecm.wsus_sync_status_info:
     computer_name: "{{ ansible_hostname }}"
+    site_code: "{{ test_site_code }}"
   register: short_hostname_run
   failed_when: false
   ignore_errors: true
@@ -216,6 +223,7 @@
 - name: Test module resilience with non-existent server
   microsoft.mecm.wsus_sync_status_info:
     computer_name: "non-existent-server.test.local"
+    site_code: "{{ test_site_code }}"
   register: nonexistent_server_run
   failed_when: false
   ignore_errors: true

@@ -2,7 +2,7 @@
 # Default test variables for win_backups_status_info module testing
 
 # SCCM Site Configuration
-test_site_name: "eco"
+test_site_code: "ECO"
 
 # Expected backup status values for validation
 valid_backup_statuses:

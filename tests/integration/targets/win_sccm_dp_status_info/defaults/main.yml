@@ -4,6 +4,9 @@
 # SCCM Server Configuration - will be set dynamically in tasks
 sccm_server_name: ""
 
+# SCCM Site Code - set to default for tests
+test_site_code: "ECO"
+
 # Distribution Point Configuration - will be set dynamically in tasks
 test_distribution_point: ""
 

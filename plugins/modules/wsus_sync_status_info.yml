@@ -11,6 +11,8 @@ DOCUMENTATION:
     - Supports multiple fallback methods to retrieve sync status using WMI queries and PowerShell cmdlets.
     - Read-only module that provides visibility into software update point synchronization health.
   version_added: "0.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
   requirements:
     - SCCM PowerShell module (ConfigurationManager)
     - Administrative access to SCCM site server
@@ -38,17 +40,20 @@ EXAMPLES: |
   - name: Get WSUS sync status for primary site server
     microsoft.mecm.wsus_sync_status_info:
       computer_name: "sccm-primary.contoso.com"
+      site_code: "PS1"
     register: wsus_status
 
   - name: Check if WSUS sync was successful
     microsoft.mecm.wsus_sync_status_info:
       computer_name: "{{ ansible_fqdn }}"
+      site_code: "{{ sccm_site_code }}"
     register: sync_result
     failed_when: sync_result.sync_status == "Failed"
 
   - name: Display sync status information
     microsoft.mecm.wsus_sync_status_info:
       computer_name: "sccm-primary.contoso.com"
+      site_code: "PS1"
     register: wsus_info
 
   - name: Show sync results
@@ -61,6 +66,7 @@ EXAMPLES: |
   - name: Monitor WSUS sync health in a loop
     microsoft.mecm.wsus_sync_status_info:
       computer_name: "sccm-primary.contoso.com"
+      site_code: "PS1"
     register: wsus_check
     until: wsus_check.sync_status == "Success"
     retries: 10

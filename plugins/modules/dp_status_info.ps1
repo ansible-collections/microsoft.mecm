@@ -11,6 +11,7 @@ $spec = @{
         computer_name = @{ required = $false; type = "str" }
         distribution_point = @{ type = "list"; elements = "str" }
         package_id = @{ type = "str" }
+        site_code = @{ required = $true; type = "str" }
     }
     supports_check_mode = $true
 }
@@ -20,6 +21,7 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 # ---- Parameters ----
 $dp_filter = $module.Params.distribution_point
 $pkg_filter = $module.Params.package_id
+$siteCode = $module.Params.site_code
 
 $module.Result.changed = $false
 
@@ -28,24 +30,7 @@ $module.Result.changed = $false
 Import-CMPsModule -module $module
 
 # ---- Connect to CMSite ----
-$siteDrive = Get-PSDrive -PSProvider CMSite -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $siteDrive) {
-    $module.FailJson("No CMSite drives found. SCCM console not installed correctly.")
-}
-
-try {
-    Set-Location -LiteralPath "$($siteDrive.Name):" -ErrorAction Stop
-}
-catch {
-    $module.FailJson("Unable to enter CMSite drive $($siteDrive.Name): $($_.Exception.Message)")
-}
-
-try {
-    Get-CMSite -ErrorAction Stop | Out-Null
-}
-catch {
-    $module.FailJson("Get-CMSite failed: $($_.Exception.Message)")
-}
+Test-CMSiteNameAndConnect -SiteCode $siteCode -Module $module
 
 # Note: target computer parameter represents the computer to query, which may differ from the site server
 

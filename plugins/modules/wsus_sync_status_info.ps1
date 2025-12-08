@@ -9,6 +9,7 @@
 $spec = @{
     options = @{
         computer_name = @{ type = 'str'; required = $true }
+        site_code = @{ required = $true; type = "str" }
     }
     supports_check_mode = $true
 }
@@ -17,6 +18,7 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 
 # ---- Parameters ----
 $serverName = $module.Params.computer_name
+$siteCode = $module.Params.site_code
 
 $module.Result.changed = $false
 
@@ -24,12 +26,7 @@ $module.Result.changed = $false
 Import-CMPsModule -module $module
 
 # ---- Connect to CMSite ----
-$siteDrive = Get-PSDrive -PSProvider CMSite -ErrorAction SilentlyContinue | Select-Object -First 1
-if (-not $siteDrive) {
-    $module.FailJson("No CMSite drives found. SCCM console not installed correctly.")
-}
-
-Test-CMSiteNameAndConnect -SiteCode $siteDrive.Name -Module $module
+Test-CMSiteNameAndConnect -SiteCode $siteCode -Module $module
 
 # ---- Helper Functions ----
 Function Get-WSUSStatusViaCmdlet {
@@ -207,12 +204,12 @@ if (-not $syncDataFound) {
 
 # Method 2: SMS_SUPSyncStatus
 if (-not $syncDataFound) {
-    $syncDataFound = Get-WSUSStatusViaSMSSUPSyncStatus -ServerName $serverName -SiteCode $siteDrive.Name -Result ([ref]$result)
+    $syncDataFound = Get-WSUSStatusViaSMSSUPSyncStatus -ServerName $serverName -SiteCode $siteCode -Result ([ref]$result)
 }
 
 # Method 3: SMS_WSUSServerLocations (fallback)
 if (-not $syncDataFound) {
-    $syncDataFound = Get-WSUSStatusViaSMSWSUSServerLocation -ServerName $serverName -SiteCode $siteDrive.Name -Result ([ref]$result)
+    $syncDataFound = Get-WSUSStatusViaSMSWSUSServerLocation -ServerName $serverName -SiteCode $siteCode -Result ([ref]$result)
 }
 
 # If no method worked, add error message
@@ -224,7 +221,7 @@ if (-not $syncDataFound) {
 if ($result.sync_status -eq "Failed") {
     try {
         # Check for common WSUS sync errors in logs
-        $logPath = "\\$serverName\SMS_$($siteDrive.Name)\Logs\wsyncmgr.log"
+        $logPath = "\\$serverName\SMS_$siteCode\Logs\wsyncmgr.log"
         if (Test-Path -LiteralPath $logPath) {
             $logContent = Get-Content -LiteralPath $logPath -Tail 20 -ErrorAction SilentlyContinue |
                 Where-Object { $_ -match "error|fail|exception" -and $_ -notmatch "Successfully" }

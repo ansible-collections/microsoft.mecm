@@ -11,6 +11,8 @@ DOCUMENTATION:
     - Supports filtering by specific distribution points or package IDs for targeted monitoring.
     - Read-only module that provides visibility into SCCM distribution infrastructure health.
   version_added: "0.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
   requirements:
     - SCCM PowerShell module (ConfigurationManager)
     - Administrative access to SCCM site server
@@ -44,21 +46,25 @@ DOCUMENTATION:
     - "Ansible Community (@ansible-community)"
 
 EXAMPLES: |
-  - name: Get status of all packages on all distribution points (localhost)
+  - name: Get status of all packages on all distribution points
     microsoft.mecm.dp_status_info:
+      site_code: "PS1"
 
   - name: Get status of all packages on remote SCCM server
     microsoft.mecm.dp_status_info:
       computer_name: "sccm-server.domain.com"
+      site_code: "PS1"
 
   - name: Get status of specific package on all distribution points
     microsoft.mecm.dp_status_info:
       computer_name: "sccm-server.domain.com"
+      site_code: "PS1"
       package_id: "ECO00003"
 
   - name: Get status of all packages on specific distribution points
     microsoft.mecm.dp_status_info:
       computer_name: "sccm-server.domain.com"
+      site_code: "PS1"
       distribution_point:
         - "DP-NYC-01.domain.com"
         - "DP-NYC-02.domain.com"
@@ -66,12 +72,14 @@ EXAMPLES: |
   - name: Get status of specific package on specific distribution point
     microsoft.mecm.dp_status_info:
       computer_name: "sccm-server.domain.com"
+      site_code: "PS1"
       distribution_point: ["DP-NYC-01.domain.com"]
       package_id: "ECO00003"
 
   - name: Check distribution readiness before deployment
     microsoft.mecm.dp_status_info:
       computer_name: "{{ sccm_server }}"
+      site_code: "{{ sccm_site_code }}"
       package_id: "{{ critical_package_id }}"
     register: dp_status
 

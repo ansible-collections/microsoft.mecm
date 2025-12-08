@@ -9,6 +9,8 @@ DOCUMENTATION:
     - Retrieves comprehensive backup status information for an SCCM primary site server to verify disaster recovery readiness.
     - Returns backup task configuration, schedule information, last backup result, and execution history.
   version_added: "0.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
   requirements:
     - SCCM PowerShell module (ConfigurationManager)
     - Administrative access to SCCM site server
@@ -27,12 +29,6 @@ DOCUMENTATION:
       required: false
       type: str
       default: "Backup SMS Site Server"
-    site_name:
-      description:
-        - The SCCM site code (usually 3 characters) to connect to.
-        - This is the primary site code where the backup task is configured.
-      required: true
-      type: str
   notes:
     - This module requires the SCCM Console to be installed on the target machine.
     - The module uses Get-CMSiteMaintenanceTask cmdlet and WMI queries to gather comprehensive backup information.
@@ -47,22 +43,22 @@ DOCUMENTATION:
 EXAMPLES: |
   - name: Check backup status of local SCCM server
     microsoft.mecm.backups_status_info:
-      site_name: "PS1"
+      site_code: "PS1"
 
   - name: Check backup status of remote primary site server
     microsoft.mecm.backups_status_info:
       computer_name: "sccm-primary.domain.com"
-      site_name: "PS1"
+      site_code: "PS1"
 
   - name: Verify backup task is enabled and recent
     microsoft.mecm.backups_status_info:
       computer_name: "{{ sccm_server }}"
-      site_name: "{{ sccm_site_code }}"
+      site_code: "{{ sccm_site_code }}"
     register: backup_info
 
   - name: Check custom backup task
     microsoft.mecm.backups_status_info:
-      site_name: "PS1"
+      site_code: "PS1"
       backup_task_name: "Custom Backup Task"
 
   - name: Ensure backup is configured and successful

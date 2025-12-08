@@ -18,6 +18,7 @@
 - name: Query SCCM to gather baseline data
   microsoft.mecm.dp_status_info:
     computer_name: "{{ sccm_server_name }}"
+    site_code: "{{ test_site_code }}"
   register: baseline_query
   failed_when: false
   ignore_errors: true
@@ -56,6 +57,7 @@
 
 - name: Module should succeed with no computer_name (defaults to localhost)
   microsoft.mecm.dp_status_info:
+    site_code: "{{ test_site_code }}"
   register: localhost_param
   failed_when: false
   ignore_errors: true
@@ -88,6 +90,7 @@
 - name: Run module with minimal parameters
   microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
+    site_code: "{{ test_site_code }}"
   register: basic_run
   failed_when: false
   ignore_errors: true
@@ -106,6 +109,7 @@
 - name: Run with distribution_point filter
   microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
+    site_code: "{{ test_site_code }}"
     distribution_point:
       - "{{ test_dp_name }}"
   register: dp_filter_run
@@ -126,6 +130,7 @@
 - name: Run with package_id filter
   microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
+    site_code: "{{ test_site_code }}"
     package_id: "{{ test_package }}"
   register: package_filter_run
   failed_when: false
@@ -145,6 +150,7 @@
 - name: Validate module behavior in check mode
   microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
+    site_code: "{{ test_site_code }}"
   register: check_mode_run
   check_mode: true
   failed_when: false
@@ -164,6 +170,7 @@
 - name: Run module with both DP + package filters
   microsoft.mecm.dp_status_info:
     computer_name: "{{ test_server_name }}"
+    site_code: "{{ test_site_code }}"
     distribution_point:
       - "{{ test_dp_name }}"
     package_id: "{{ test_package }}"

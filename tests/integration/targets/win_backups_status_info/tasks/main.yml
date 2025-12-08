@@ -6,7 +6,7 @@
 - name: Test backups_status_info module with different server name
   microsoft.mecm.backups_status_info:
     computer_name: "nonexistent-server.example.com"
-    site_name: "{{ test_site_name }}"
+    site_code: "{{ test_site_code }}"
   register: different_server_result
   ignore_errors: true
 
@@ -19,7 +19,7 @@
 - name: Test backups_status_info module with valid server
   microsoft.mecm.backups_status_info:
     computer_name: "{{ ansible_hostname }}.{{ ansible_domain | default('domain.com') }}"
-    site_name: "{{ test_site_name }}"
+    site_code: "{{ test_site_code }}"
   register: backup_status_result
   ignore_errors: true
 
@@ -62,7 +62,7 @@
 - name: Test check mode functionality
   microsoft.mecm.backups_status_info:
     computer_name: "{{ ansible_hostname }}.{{ ansible_domain }}"
-    site_name: "{{ test_site_name }}"
+    site_code: "{{ test_site_code }}"
   register: check_mode_result
   check_mode: true
   ignore_errors: true

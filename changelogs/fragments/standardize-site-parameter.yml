@@ -1,0 +1,4 @@
+breaking_changes:
+  - "backups_status_info - Changed parameter from ``site_name`` to ``site_code`` for consistency across modules"
+  - "dp_status_info - Added required ``site_code`` parameter"
+  - "wsus_sync_status_info - Added required ``site_code`` parameter"

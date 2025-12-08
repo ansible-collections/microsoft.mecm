@@ -10,7 +10,7 @@ $spec = @{
     options = @{
         computer_name = @{ required = $false; type = "str" }
         backup_task_name = @{ required = $false; type = "str"; default = "Backup SMS Site Server" }
-        site_name = @{ required = $true; type = "str" }
+        site_code = @{ required = $true; type = "str" }
     }
     supports_check_mode = $true
 }
@@ -21,7 +21,7 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 # Use Get-LocalComputerFQDN from module utilities for consistent FQDN resolution
 $server = if ($module.Params.computer_name) { $module.Params.computer_name } else { Get-LocalComputerFQDN }
 $backupTaskName = $module.Params.backup_task_name
-$siteName = $module.Params.site_name
+$siteCode = $module.Params.site_code
 
 $module.Result.changed = $false
 
@@ -32,7 +32,7 @@ Import-CMPsModule -module $module
 
 # ---- Connect to CMSite using user-specified site name ----
 # Test-CMSiteNameAndConnect verifies site name and establishes connection
-Test-CMSiteNameAndConnect -SiteCode $siteName -Module $module
+Test-CMSiteNameAndConnect -SiteCode $siteCode -Module $module
 
 
 # ---- Query Backup Status ----
