@@ -13,23 +13,18 @@ function Get-CmdletArgsForDeploymentQuery {
     param (
         [Parameter(Mandatory = $true)][object]$module
     )
-    $software_update_group_id = $module.Params.software_update_group_id
-    $software_update_group_name = $module.Params.software_update_group_name
+    $name = $module.Params.name
     $software_update_id = $module.Params.software_update_id
     $software_update_name = $module.Params.software_update_name
     $collection_id = $module.Params.collection_id
     $collection_name = $module.Params.collection_name
     $cmdlet_args = @{}
 
-    if (($null -ne $software_update_group_id) -or ($null -ne $software_update_group_name)) {
-        $software_object = Get-SoftwareUpdateGroupObject `
-            -module $module `
-            -software_update_group_id $software_update_group_id `
-            -software_update_group_name $software_update_group_name `
-            -throw_error_if_not_found $true
-        $cmdlet_args["InputObject"] = $software_object
+    if ($null -ne $name) {
+        $cmdlet_args["Name"] = $name
     }
-    elseif (($null -ne $software_update_id) -or ($null -ne $software_update_name)) {
+
+    if (($null -ne $software_update_id) -or ($null -ne $software_update_name)) {
         $software_object = Get-SoftwareUpdateObject `
             -module $module `
             -software_update_id $software_update_id `
@@ -55,9 +50,8 @@ $spec = @{
     options = @{
         site_code = @{ type = 'str'; required = $true }
         id = @{ type = 'str'; required = $false }
+        name = @{ type = 'str'; required = $false }
 
-        software_update_group_id = @{ type = 'str'; required = $false }
-        software_update_group_name = @{ type = 'str'; required = $false }
         software_update_id = @{ type = 'str'; required = $false }
         software_update_name = @{ type = 'str'; required = $false }
         collection_name = @{ type = 'str'; required = $false }
@@ -65,7 +59,7 @@ $spec = @{
     }
     supports_check_mode = $true
     mutually_exclusive = @(
-        , @("software_update_group_id", "software_update_group_name", "software_update_id", "software_update_name")
+        , @("software_update_id", "software_update_name")
         , @("collection_name", "collection_id")
     )
 }
@@ -122,7 +116,7 @@ foreach ($deployment_object in $deployment_objects) {
         last_modified_by = $deployment_object.LastModifiedBy
         last_modified_time = Format-DateTimeAsStringSafely -dateTimeObject $deployment_object.LastModificationTime
         available_time = Format-DateTimeAsStringSafely -dateTimeObject $deployment_object.StartTime
-        expiration_time = Format-DateTimeAsStringSafely -dateTimeObject $deployment_object.DeadlineDateTime
+        deadline_time = Format-DateTimeAsStringSafely -dateTimeObject $deployment_object.DeadlineDateTime
         timezone = if ($deployment_object.UseGMTTimes) { "utc" } else { "localtime" }
         deployment_type = if ($deployment_object.SuppressReboot -eq 3) { "required" } else { "available" }
         contains_expired_updates = $deployment_object.ContainsExpiredUpdates

@@ -32,8 +32,15 @@ DOCUMENTATION:
       description:
         - The ID of the software update deployment to manage.
         - This option can only be used for existing deployments. If creating a new deployment you should
-          specify one of O(software_update_group_id), O(software_update_group_name), O(software_update_id), O(software_update_name)
+          specify the name, one of O(software_update_group_id), O(software_update_group_name), O(software_update_id), O(software_update_name),
           and one of O(collection_name), O(collection_id).
+      type: str
+      required: false
+    name:
+      description:
+        - The name of the software update deployment.
+        - This option can be used to identify a deployment, but is used as a last resort due to performance implications.
+          It should only be used in combination with other identifiers like collection name or ID, software update name or ID, etc.
       type: str
       required: false
     software_update_group_id:
@@ -41,8 +48,8 @@ DOCUMENTATION:
         - The ID of the software update group to deploy.
         - If O(state) is present, one and only one of O(software_update_group_id), O(software_update_group_name),
           O(software_update_id), O(software_update_name) must be specified.
-        - Software updates cannot be modified once a deployment is created. For update operations, this option is only
-          used to identify a deployment.
+        - Software updates cannot be modified once a deployment is created. For update operations, this option is
+          ignored.
       type: str
       required: false
     software_update_group_name:
@@ -50,8 +57,8 @@ DOCUMENTATION:
         - The name of the software update group to deploy.
         - If O(state) is present, one and only one of O(software_update_group_id), O(software_update_group_name),
           O(software_update_id), O(software_update_name) must be specified.
-        - Software updates cannot be modified once a deployment is created. For update operations, this option is only
-          used to identify a deployment.
+        - Software updates cannot be modified once a deployment is created. For update operations, this option is
+          ignored.
       type: str
       required: false
     software_update_id:
@@ -75,7 +82,7 @@ DOCUMENTATION:
     collection_name:
       description:
         - The name of the collection of clients that should receive the deployment.
-        - If O(state) is present, one and only one of O(collection_name), O(collection_id) must be specified.
+        - Either O(id) or one and only one of O(collection_name), O(collection_id) must be specified.
         - Collections cannot be modified once a deployment is created using this module. For update operations,
           this option is only used to identify a deployment.
       type: str
@@ -83,7 +90,7 @@ DOCUMENTATION:
     collection_id:
       description:
         - The ID of the collection of clients that should receive the deployment.
-        - If O(state) is present, one and only one of O(collection_name), O(collection_id) must be specified.
+        - Either O(id) or one and only one of O(collection_name), O(collection_id) must be specified.
         - Collections cannot be modified once a deployment is created using this module. For update operations,
           this option is only used to identify a deployment.
       type: str
@@ -103,13 +110,6 @@ DOCUMENTATION:
       required: false
       default: false
 
-    name:
-      description:
-        - The name of the software update deployment.
-        - This option is not used to identify the deployment. It should be treated as just another property that
-          can be updated as needed.
-      type: str
-      required: false
     allow_restarts:
       description:
         - Whether to restart clients after the software update is deployed.
@@ -147,7 +147,7 @@ DOCUMENTATION:
           Some examples are "2025-01-01", "2025-01-01 12:00:00 AM", "2025-01-01 12 PM"
       type: str
       required: false
-    expiration_time:
+    deadline_time:
       description:
         - The time the software update deployment expires.
         - The format must be a valid powershell date string. It should be parsable by the Get-Date cmdlet.
@@ -340,7 +340,7 @@ EXAMPLES: |
       allow_remote_distribution_point_downloads: true
       allow_default_distribution_point_downloads: true
       available_time: 11:00:00 AM
-      expiration_time: 11:00:00 PM
+      deadline_time: 11:00:00 PM
       deployment_type: "required"
       description: Test Description"
       disable_operations_manager_alerts: true
