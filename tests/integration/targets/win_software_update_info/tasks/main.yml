@@ -1,0 +1,27 @@
+---
+- name: Get all software updates
+  microsoft.mecm.software_update_info:
+    site_code: "{{ test_site_code }}"
+  register: _get_all_software_updates
+
+- name: Get software updates by id
+  microsoft.mecm.software_update_info:
+    site_code: "{{ test_site_code }}"
+    id: "16777517"
+  register: _get_software_updates_by_id
+
+- name: Get software updates by article_ids
+  microsoft.mecm.software_update_info:
+    site_code: "{{ test_site_code }}"
+    article_ids:
+      - "982217"
+      - "2237744"
+  register: _get_software_updates_by_article_ids
+
+- name: Check output
+  ansible.builtin.assert:
+    that:
+      - _get_all_software_updates.software_updates | length > 1
+      - _get_all_software_updates is not ansible.builtin.changed
+      - _get_software_updates_by_article_ids.software_updates | length > 1
+      - _get_software_updates_by_article_ids is not ansible.builtin.changed
