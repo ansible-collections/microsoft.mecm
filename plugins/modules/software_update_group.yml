@@ -39,6 +39,7 @@ DOCUMENTATION:
     state:
       description:
         - Specify if the software update group should be present or absent.
+        - Removing a software update group will remove any deployments that are associated with the group.
       type: str
       required: false
       choices:

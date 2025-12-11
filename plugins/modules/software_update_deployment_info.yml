@@ -17,32 +17,21 @@ DOCUMENTATION:
         - The ID of the software update deployment to query.
       type: str
       required: false
-    software_update_group_id:
+    name:
       description:
-        - The ID of the software update group to use to query for deployments.
-        - Only one of O(software_update_group_id), O(software_update_group_name), O(software_update_id),
-          or O(software_update_name) can be specified.
-      type: str
-      required: false
-    software_update_group_name:
-      description:
-        - The name of the software update group to use to query for deployments.
-        - Only one of O(software_update_group_id), O(software_update_group_name), O(software_update_id),
-          or O(software_update_name) can be specified.
+        - The name of the software update deployment to query.
       type: str
       required: false
     software_update_id:
       description:
         - The ID of the software update to use to query for deployments.
-        - Only one of O(software_update_group_id), O(software_update_group_name), O(software_update_id),
-          or O(software_update_name) can be specified.
+        - Only one of O(software_update_id) or O(software_update_name) can be specified.
       type: str
       required: false
     software_update_name:
       description:
         - The name of the software update to use to query for deployments.
-        - Only one of O(software_update_group_id), O(software_update_group_name), O(software_update_id),
-          or O(software_update_name) can be specified.
+        - Only one of O(software_update_id) or O(software_update_name) can be specified.
       type: str
       required: false
     collection_name:
@@ -105,7 +94,7 @@ RETURN:
           "disable_operations_manager_alerts": true,
           "enable_soft_deadline": true,
           "enabled": true,
-          "expiration_time": "",
+          "deadline_time": "",
           "generate_operations_manager_alert_on_failure": true,
           "id": "{9E4AB1D7-2322-4E9B-883C-510C25DE6DF1}",
           "last_modified_by": "Contoso\\Administrator",

@@ -27,12 +27,18 @@ function Get-ObjectsForDeploymentInput {
             -software_update_group_name $software_group_name `
             -throw_error_if_not_found $throw_error_if_not_found
     }
-    else {
+    elseif (($null -ne $software_update_id) -or ($null -ne $software_update_name)) {
         $assigned_su_object = Get-SoftwareUpdateObject `
             -module $module `
             -software_update_id $software_update_id `
             -software_update_name $software_update_name `
             -throw_error_if_not_found $throw_error_if_not_found
+    }
+    elseif ($throw_error_if_not_found) {
+        $module.FailJson(
+            "Either software_update_group_id, software_update_group_name, software_update_id, " +
+            "or software_update_name must be specified for Get-ObjectsForDeploymentInput"
+        )
     }
 
     $targeted_collection = Get-CollectionObject `
@@ -50,6 +56,8 @@ function Get-ObjectsForDeploymentInput {
 
 function Get-DeploymentObject {
     # Helper function to get a software update deployment object from the site, using module parameters as needed.
+    # MECM is really loose about what constitutes a unique deployment. It allows you to create multiple deployments with the same
+    # software update and collection. So unless the user specifies the ID, we need to just do our best.
     param (
         [Parameter(Mandatory = $true)][object]$module
     )
@@ -58,27 +66,37 @@ function Get-DeploymentObject {
         $deployment_object = Get-CMSoftwareUpdateDeployment -DeploymentId $module.Params.id
     }
     else {
+        $cmdlet_args = @{}
         $related_input_objects = Get-ObjectsForDeploymentInput -module $module -throw_error_if_not_found $false
-        if (($null -eq $related_input_objects.assigned_su_object) -or ($null -eq $related_input_objects.targeted_collection)) {
-            return $null
+        if (($null -ne $module.Params.software_update_id) -or ($null -ne $module.Params.software_update_name)) {
+            $cmdlet_args["InputObject"] = $related_input_objects.assigned_su_object
         }
-        $deployment_object = Get-CMSoftwareUpdateDeployment `
-            -InputObject $related_input_objects.assigned_su_object `
-            -Collection $related_input_objects.targeted_collection
+        $cmdlet_args["Collection"] = $related_input_objects.targeted_collection
+        $deployment_object = Get-CMSoftwareUpdateDeployment @cmdlet_args
     }
 
+    # If more than one deployment is found, fallback to searching by name
     if ($deployment_object -is [array]) {
-        $dIds = @()
-        foreach ($deployment in $deployment_object) {
-            $dIds += $deployment.AssignmentUniqueId
+        # If the name parameter is not specified, we need to fail. The collection/software update identifiers are not unique enough
+        # to identify the deployment.
+        if ([string]::IsNullOrEmpty($module.Params.name)) {
+            $module.FailJson(
+                "Multiple deployments found for the combination of software update and collection identifiers. " +
+                "Please include the name parameter, or use the ID option to specify the deployment to manage, so only one is found."
+            )
         }
-        $module.FailJson(
-            "Multiple deployments found for the given software and collection identifiers: $dIds. This module " +
-            "only supports unique deployments. Please use the ID option to specify the deployment to manage."
-        )
+        foreach ($dp in $deployment_objects) {
+            if ($dp.AssignmentName -eq $module.Params.name) {
+                # deployment found with the same collection, software, and name. Thats good enough.
+                return $dp
+            }
+        }
+        # No deployment found with the same collection, software, and name. So its missing.
+        return $null
     }
-
-    return $deployment_object
+    else {
+        return $deployment_object
+    }
 }
 
 
@@ -183,7 +201,7 @@ function Complete-DeploymentUpdate {
 
     $switch_params.remove('distribute_content')
 
-    $datetime_params['expiration_time'] = 'DeploymentExpireDateTime'
+    $datetime_params['deadline_time'] = 'DeploymentExpireDateTime'
 
     $cmdlet_arguments = Format-ModuleParamAsCmdletArgument `
         -module $module `
@@ -300,9 +318,9 @@ function Test-DeploymentNeedsUpdating {
             return $true
         }
     }
-    $expiration_time_param = $module.Params.expiration_time
-    if ($null -ne $expiration_time_param) {
-        if ($(Get-Date ($expiration_time_param)) -ne $deployment_object.EnforcementDeadline) {
+    $deadline_time_param = $module.Params.deadline_time
+    if ($null -ne $deadline_time_param) {
+        if ($(Get-Date ($deadline_time_param)) -ne $deployment_object.EnforcementDeadline) {
             return $true
         }
     }
@@ -360,6 +378,7 @@ $spec = @{
         id = @{ type = 'str'; required = $false }
         state = @{ type = 'str'; required = $false ; choices = @("present", "absent"); default = "present" }
         only_use_verifiable_properties_for_change_detection = @{ type = 'bool'; required = $false; default = $false }
+        name = @{ type = 'str'; required = $false }
 
         software_update_group_id = @{ type = 'str'; required = $false }
         software_update_group_name = @{ type = 'str'; required = $false }
@@ -368,13 +387,12 @@ $spec = @{
         collection_name = @{ type = 'str'; required = $false }
         collection_id = @{ type = 'str'; required = $false }
 
-        name = @{ type = 'str'; required = $false }
         allow_restarts = @{ type = 'bool'; required = $false }
         allow_metered_network_downloads = @{ type = 'bool'; required = $false }
         allow_remote_distribution_point_downloads = @{ type = 'bool'; required = $false }
         allow_default_distribution_point_downloads = @{ type = 'bool'; required = $false }
         available_time = @{ type = 'str'; required = $false }
-        expiration_time = @{ type = 'str'; required = $false }
+        deadline_time = @{ type = 'str'; required = $false }
         deployment_type = @{ type = 'str'; required = $false ; choices = @("required", "available") }
         description = @{ type = 'str'; required = $false }
         disable_operations_manager_alerts = @{ type = 'bool'; required = $false }
@@ -403,7 +421,6 @@ $spec = @{
     }
     supports_check_mode = $true
     required_one_of = @(
-        , @("id", "software_update_group_id", "software_update_group_name", "software_update_id", "software_update_name")
         , @("id", "collection_name", "collection_id")
     )
     mutually_exclusive = @(
@@ -449,7 +466,7 @@ $DIRECT_MAPPED_PARAMS = @{
 # Map module parameters that are string that should be cast to datetime cmdlet arguments
 $DATETIME_PARAMS = @{
     available_time = "AvailableDateTime"
-    expiration_time = "DeadlineDateTime"
+    deadline_time = "DeadlineDateTime"
 }
 
 # Map module parameters that are booleans that should be cast to switch cmdlet arguments
