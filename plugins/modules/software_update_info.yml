@@ -1,0 +1,95 @@
+---
+# Copyright: (c) 2024, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: software_update_info
+  short_description: Gather information about software updates in a Configuration Manager site
+  description:
+    - This module gathers information about software updates for a Configuration Manager site.
+
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+
+  options:
+    name:
+      description:
+        - Specify the name to use when searching for the software update.
+        - This option is mutually exclusive with the id and article_ids options.
+      type: str
+      required: false
+    id:
+      description:
+        - Specify the ID of the software update to get information about.
+        - This option is mutually exclusive with the name and article_ids options.
+      type: str
+      required: false
+    article_ids:
+      description:
+        - Specify the article IDs of the software updates to get information about.
+        - This option is mutually exclusive with the name and id options.
+      type: list
+      elements: str
+      required: false
+
+EXAMPLES: |
+  # Create the PS drive for the site "XYZ"
+  - name: Create the PS drive for the site "XYZ"
+    microsoft.mecm.site_ps_drive:
+      site_code: XYZ
+      state: present
+
+  - name: Gather software updates for the site "XYZ"
+    microsoft.mecm.software_update_info:
+      site_code: "XYZ"
+
+  - name: Gather information about the software update with the name "Windows 10"
+    microsoft.mecm.software_update_info:
+      site_code: "XYZ"
+      name: "Windows 10"
+
+  - name: Gather information about the software update with the ID "1234567890"
+    microsoft.mecm.software_update_info:
+      site_code: "XYZ"
+      id: "1234567890"
+
+  - name: Gather information about the software update with the article ID "KB1234567890"
+    microsoft.mecm.software_update_info:
+      site_code: "XYZ"
+      article_ids:
+        - "KB1234567890"
+
+RETURN:
+  software_updates:
+    description: List of software updates for the site.
+    returned: always
+    type: list
+    elements: dict
+    sample: |-
+      [
+        {
+          "article_id": "982217",
+          "category_names": [
+            "Critical Updates",
+            "Search Enhancement Pack",
+            ""
+          ],
+          "created_time": "2025-11-21 12:16:54 -8",
+          "description": "This update improves performance and reliability of Microsoft Search Enhancement Pack.",
+          "id": "16777515",
+          "informational_url": "http://support.microsoft.com/kb/982217",
+          "is_deployable": true,
+          "is_deployed": true,
+          "is_enabled": true,
+          "is_expired": false,
+          "is_hidden": false,
+          "is_latest": true,
+          "is_superseded": false,
+          "is_user_defined": false,
+          "last_modified_by": "",
+          "last_modified_time": "2025-11-21 12:16:54 -8",
+          "last_status_time": "2025-12-05 13:24:28 -8",
+          "name": "Update for Microsoft Search Enhancement Pack",
+          "posted_time": "2012-04-04 19:54:27 -7"
+        },
+      ]
