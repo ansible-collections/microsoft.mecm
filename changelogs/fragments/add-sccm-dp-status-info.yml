@@ -1,3 +1,0 @@
----
-minor_changes:
-  - "dp_status_info - Add new module to retrieve distribution point status information from SCCM."

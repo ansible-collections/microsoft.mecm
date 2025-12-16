@@ -1,3 +1,42 @@
 ---
 ancestor: null
-releases: {}
+releases:
+  1.0.0:
+    changes:
+      breaking_changes:
+        - backups_status_info - Changed parameter from ``site_name`` to ``site_code``
+          for consistency across modules
+        - dp_status_info - Added required ``site_code`` parameter
+        - wsus_sync_status_info - Added required ``site_code`` parameter
+      minor_changes:
+        - Add client_action module
+        - Add site_ps_drive module
+        - Add site_status_message_info module
+        - Add software_update_deployment module
+        - Add software_update_deployment_info module
+        - Add software_update_group module
+        - Add software_update_group_info module
+        - Add software_update_group_membership module
+        - Add software_update_info module
+        - backups_status_info - Add new module to retrieve SCCM site backup status
+          information including task configuration, schedule, and execution history.
+        - dp_status_info - Add new module to retrieve distribution point status information
+          from SCCM.
+        - install_updates - Add new module to orchestrate software update installation
+          on SCCM clients with intelligent progress monitoring, timeout handling,
+          and reboot management.
+        - wsus_sync_status_info - Add new module to retrieve WSUS synchronization
+          status information from SCCM software update points with last sync time,
+          status, and error reporting.
+    fragments:
+      - 17-add-software-update-deployment-module.yml
+      - 18-add-software-update-group.yml
+      - 20-add-client-action.yml
+      - 26-add-software-update-info.yml
+      - 6-add-site-status-message-info.yml
+      - add-sccm-backups-status-info.yml
+      - add-sccm-dp-status-info.yml
+      - add-sccm-wsus-sync-status-info.yml
+      - add-win-sccm-install-updates.yml
+      - standardize-site-parameter.yml
+    release_date: '2025-12-16'
