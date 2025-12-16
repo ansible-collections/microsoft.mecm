@@ -1,3 +1,0 @@
----
-minor_changes:
-  - "install_updates - Add new module to orchestrate software update installation on SCCM clients with intelligent progress monitoring, timeout handling, and reboot management."

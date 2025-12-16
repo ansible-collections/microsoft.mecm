@@ -1,3 +1,0 @@
----
-minor_changes:
-  - "backups_status_info - Add new module to retrieve SCCM site backup status information including task configuration, schedule, and execution history."
