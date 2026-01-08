@@ -3,6 +3,7 @@
 
 # Integration tests
 tests/integration/inventory.winrm
+.ansible
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
