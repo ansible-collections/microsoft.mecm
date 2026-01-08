@@ -213,7 +213,9 @@ DOCUMENTATION:
       required: false
     persist_on_write_filter_device:
       description:
-        - Whether to install a software update on the temporary overlay and commit changes later, or commit the changes at an installation deadline or a maintenance window.
+        - >-
+          Whether to install a software update on the temporary overlay and commit changes later,
+          or commit the changes at an installation deadline or a maintenance window.
         - If true, the software update will be installed on the temporary overlay and committed later.
       type: bool
       required: false

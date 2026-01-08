@@ -40,7 +40,9 @@ DOCUMENTATION:
     - This module requires the SCCM Console to be installed on the target machine.
     - The module connects to the SCCM site server using PowerShell cmdlets.
     - This is an info module that does not make any changes to the system.
-    - "B(Performance): In large environments with thousands of packages and many distribution points, query time may be significant. Consider using C(distribution_point) and C(package_id) filters to limit scope."
+    - >-
+      "B(Performance): In large environments with thousands of packages and many distribution points,
+      query time may be significant. Consider using C(distribution_point) and C(package_id) filters to limit scope."
     - "B(Server validation): The module validates that the connected SCCM site matches the specified C(computer_name) parameter to ensure consistency."
   author:
     - "Ansible Community (@ansible-community)"
