@@ -1,0 +1,10 @@
+---
+profile: production
+strict: true
+
+# https://ansible.readthedocs.io/projects/lint/configuring/#ansible-lint-configuration
+exclude_paths:
+  - changelogs/
+  - CHANGELOG.rst
+  - tests/
+  - scripts/
