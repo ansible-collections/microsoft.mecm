@@ -1,0 +1,104 @@
+---
+# Copyright: (c) 2025, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: application_deployment_type_info
+  short_description: Gather information about deployment types on MECM applications
+  description:
+    - This module gathers information about deployment types for an application
+      in a Configuration Manager site.
+    - When O(deployment_type_name) is specified, returns a single deployment type matching that name.
+    - When O(deployment_type_name) is omitted, returns all deployment types for the application.
+    - Uses the Get-CMDeploymentType cmdlet.
+    - This is a read-only module that does not make any changes to the system.
+  version_added: "1.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - SCCM PowerShell module (ConfigurationManager)
+    - Administrative access to SCCM site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+      type: str
+      required: true
+    application_name:
+      description:
+        - The name of the application to query deployment types for.
+      type: str
+      required: true
+    deployment_type_name:
+      description:
+        - The name of a specific deployment type to query.
+        - If not specified, all deployment types for the application are returned.
+      type: str
+      required: false
+  notes:
+    - This module requires the Microsoft Endpoint Configuration Manager Console to be installed on the target machine.
+    - The module uses Get-CMDeploymentType cmdlet to gather deployment type information.
+    - This is an info module that does not make any changes to the system.
+    - "B(Permissions): Requires administrative access to query MECM deployment types."
+  author:
+    - Ansible Ecosystem Engineering team (@ansible)
+    - Shahar Golshani (@shahargolshani)
+
+EXAMPLES: |
+  - name: Get all deployment types for an application
+    microsoft.mecm.application_deployment_type_info:
+      site_code: "XYZ"
+      application_name: "My Application"
+    register: dt_info
+
+  - name: Get a specific deployment type by name
+    microsoft.mecm.application_deployment_type_info:
+      site_code: "XYZ"
+      application_name: "My Application"
+      deployment_type_name: "My Script Installer"
+    register: dt_info
+
+  - name: Assert a deployment type exists
+    microsoft.mecm.application_deployment_type_info:
+      site_code: "XYZ"
+      application_name: "My Application"
+    register: dt_info
+
+  - name: Verify deployment type count
+    ansible.builtin.assert:
+      that:
+        - dt_info.deployment_types | length > 0
+      fail_msg: "No deployment types found for application"
+
+RETURN:
+  deployment_types:
+    description: List of deployment type information.
+    returned: always
+    type: list
+    elements: dict
+    contains:
+      name:
+        description: The deployment type display name.
+        type: str
+        returned: always
+        sample: "My Application - Windows Installer"
+      id:
+        description: The CI_ID of the deployment type.
+        type: str
+        returned: always
+        sample: "16777500"
+      technology:
+        description: The deployment type technology (e.g. MSI, Script).
+        type: str
+        returned: always
+        sample: "MSI"
+      content_location:
+        description: The content source location path.
+        type: str
+        returned: always
+        sample: "\\\\server\\share\\app"
+      install_command:
+        description: The installation command line.
+        type: str
+        returned: when available
+        sample: "msiexec /i app.msi /qn"

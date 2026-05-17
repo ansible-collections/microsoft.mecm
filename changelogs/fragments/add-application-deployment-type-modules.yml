@@ -1,0 +1,4 @@
+---
+minor_changes:
+  - "application_deployment_type - Add new module to add or remove MSI and Script deployment types on MECM applications."
+  - "application_deployment_type_info - Add new module to retrieve deployment type information from MECM applications."

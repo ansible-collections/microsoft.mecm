@@ -1,0 +1,405 @@
+---
+# Integration tests for application_deployment_type and application_deployment_type_info modules
+
+- name: Gather host facts needed for test variables
+  ansible.builtin.setup:
+    gather_subset:
+      - network
+
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_app_name: "{{ unique_test_id }}-dt-app"
+    test_msi_dt_name: "{{ unique_test_id }}-MSI-DT"
+    test_script_dt_name: "{{ unique_test_id }}-Script-DT"
+    test_content_location: "\\\\{{ ansible_hostname }}\\installers for sccm\\npp.8.8.8.Installer.x64.msi"
+    test_install_command: "install.cmd /S"
+    test_install_command_updated: "install.cmd /S /QUIET"
+    test_script_language: "PowerShell"
+    test_script_file: "C:\\Windows\\Temp\\detect_test.ps1"
+
+- name: Create detection script file for script DT tests
+  ansible.windows.win_copy:
+    content: |
+      if (Test-Path "C:\Program Files\TestApp") { exit 0 } else { exit 1 }
+    dest: "{{ test_script_file }}"
+
+- name: Create parent application for DT tests
+  microsoft.mecm.application:
+    site_code: "{{ test_site_code }}"
+    name: "{{ test_app_name }}"
+    description: "Parent application for deployment type integration tests"
+    state: present
+
+- name: Test deployment type lifecycle
+  block:
+    # =======================================================
+    # MSI DEPLOYMENT TYPE
+    # =======================================================
+
+    # -----------------------------------------------
+    # MSI CREATE - check mode
+    # -----------------------------------------------
+    - name: Add MSI deployment type - check mode
+      microsoft.mecm.application_deployment_type:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_msi_dt_name }}"
+        type: msi
+        content_location: "{{ test_content_location }}"
+        state: present
+      check_mode: true
+      register: _msi_create_check
+
+    - name: Get DT info after check mode create
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+      register: _info_after_msi_check
+
+    - name: Assert check mode MSI create did not apply
+      ansible.builtin.assert:
+        that:
+          - _msi_create_check is changed
+          - _msi_create_check.deployment_type.name == test_msi_dt_name
+          - _info_after_msi_check.deployment_types | length == 0
+
+    # -----------------------------------------------
+    # MSI CREATE - actual
+    # -----------------------------------------------
+    - name: Add MSI deployment type
+      microsoft.mecm.application_deployment_type: &create_msi_dt
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_msi_dt_name }}"
+        type: msi
+        content_location: "{{ test_content_location }}"
+        state: present
+      register: _msi_create
+
+    # -----------------------------------------------
+    # MSI CREATE - idempotency
+    # -----------------------------------------------
+    - name: Add MSI deployment type - idempotency
+      microsoft.mecm.application_deployment_type: *create_msi_dt
+      register: _msi_create_idempotent
+
+    # -----------------------------------------------
+    # MSI INFO - get single DT by name
+    # -----------------------------------------------
+    - name: Get MSI DT info by name
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_msi_dt_name }}"
+      register: _msi_info_by_name
+
+    - name: Assert MSI create, idempotency, and info by name
+      ansible.builtin.assert:
+        that:
+          - _msi_create is changed
+          - _msi_create_idempotent is not changed
+          - _msi_info_by_name.deployment_types | length == 1
+          - _msi_info_by_name.deployment_types[0].name == test_msi_dt_name
+          - _msi_info_by_name.deployment_types[0].technology == "MSI"
+
+    # =======================================================
+    # SCRIPT DEPLOYMENT TYPE
+    # =======================================================
+
+    # -----------------------------------------------
+    # SCRIPT CREATE - check mode
+    # -----------------------------------------------
+    - name: Add Script deployment type - check mode
+      microsoft.mecm.application_deployment_type:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+        type: script
+        install_command: "{{ test_install_command }}"
+        script_language: "{{ test_script_language }}"
+        script_file: "{{ test_script_file }}"
+        state: present
+      check_mode: true
+      register: _script_create_check
+
+    - name: Get DT info after script check mode create
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+      register: _info_after_script_check
+
+    - name: Assert check mode Script create did not apply
+      ansible.builtin.assert:
+        that:
+          - _script_create_check is changed
+          - _info_after_script_check.deployment_types | length == 0
+
+    # -----------------------------------------------
+    # SCRIPT CREATE - actual
+    # -----------------------------------------------
+    - name: Add Script deployment type
+      microsoft.mecm.application_deployment_type: &create_script_dt
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+        type: script
+        install_command: "{{ test_install_command }}"
+        script_language: "{{ test_script_language }}"
+        script_file: "{{ test_script_file }}"
+        state: present
+      register: _script_create
+
+    # -----------------------------------------------
+    # SCRIPT CREATE - idempotency
+    # -----------------------------------------------
+    - name: Add Script deployment type - idempotency
+      microsoft.mecm.application_deployment_type: *create_script_dt
+      register: _script_create_idempotent
+
+    # -----------------------------------------------
+    # SCRIPT INFO - get single DT by name
+    # -----------------------------------------------
+    - name: Get Script DT info by name
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+      register: _script_info_by_name
+
+    - name: Assert Script create, idempotency, and info by name
+      ansible.builtin.assert:
+        that:
+          - _script_create is changed
+          - _script_create_idempotent is not changed
+          - _script_info_by_name.deployment_types | length == 1
+          - _script_info_by_name.deployment_types[0].name == test_script_dt_name
+          - _script_info_by_name.deployment_types[0].install_command == test_install_command
+
+    # =======================================================
+    # INFO - get all DTs
+    # =======================================================
+
+    - name: Get all deployment types for the application
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+      register: _all_dts_info
+
+    - name: Assert both DTs are returned in the list
+      ansible.builtin.assert:
+        that:
+          - _all_dts_info.deployment_types | length == 2
+          - _all_dts_info.deployment_types | map(attribute='name') | list | sort == [test_msi_dt_name, test_script_dt_name] | sort
+
+    # =======================================================
+    # SCRIPT UPDATE
+    # =======================================================
+
+    # -----------------------------------------------
+    # SCRIPT UPDATE - check mode
+    # -----------------------------------------------
+    - name: Update Script DT install command - check mode
+      microsoft.mecm.application_deployment_type:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+        type: script
+        install_command: "{{ test_install_command_updated }}"
+        script_language: "{{ test_script_language }}"
+        script_file: "{{ test_script_file }}"
+      check_mode: true
+      register: _script_update_check
+
+    - name: Get Script DT info after check mode update
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+      register: _info_after_script_update_check
+
+    - name: Assert check mode update did not apply
+      ansible.builtin.assert:
+        that:
+          - _script_update_check is changed
+          - _info_after_script_update_check.deployment_types[0].install_command == test_install_command
+
+    # -----------------------------------------------
+    # SCRIPT UPDATE - actual
+    # -----------------------------------------------
+    - name: Update Script DT install command
+      microsoft.mecm.application_deployment_type: &update_script_dt
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+        type: script
+        install_command: "{{ test_install_command_updated }}"
+        script_language: "{{ test_script_language }}"
+        script_file: "{{ test_script_file }}"
+      register: _script_update
+
+    # -----------------------------------------------
+    # SCRIPT UPDATE - idempotency
+    # -----------------------------------------------
+    - name: Update Script DT install command - idempotency
+      microsoft.mecm.application_deployment_type: *update_script_dt
+      register: _script_update_idempotent
+
+    - name: Get Script DT info after update
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+      register: _info_after_script_update
+
+    - name: Assert Script update, idempotency, and updated value
+      ansible.builtin.assert:
+        that:
+          - _script_update is changed
+          - _script_update_idempotent is not changed
+          - _info_after_script_update.deployment_types[0].install_command == test_install_command_updated
+
+    # =======================================================
+    # DELETE - Script DT
+    # =======================================================
+
+    # -----------------------------------------------
+    # SCRIPT DELETE - check mode
+    # -----------------------------------------------
+    - name: Delete Script DT - check mode
+      microsoft.mecm.application_deployment_type:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+        type: script
+        install_command: "{{ test_install_command_updated }}"
+        script_language: "{{ test_script_language }}"
+        script_file: "{{ test_script_file }}"
+        state: absent
+      check_mode: true
+      register: _script_delete_check
+
+    - name: Get DTs after check mode delete
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+      register: _info_after_script_delete_check
+
+    - name: Assert check mode delete did not remove
+      ansible.builtin.assert:
+        that:
+          - _script_delete_check is changed
+          - _info_after_script_delete_check.deployment_types | length == 2
+
+    # -----------------------------------------------
+    # SCRIPT DELETE - actual
+    # -----------------------------------------------
+    - name: Delete Script DT
+      microsoft.mecm.application_deployment_type: &delete_script_dt
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_script_dt_name }}"
+        type: script
+        install_command: "{{ test_install_command_updated }}"
+        script_language: "{{ test_script_language }}"
+        script_file: "{{ test_script_file }}"
+        state: absent
+      register: _script_delete
+
+    # -----------------------------------------------
+    # SCRIPT DELETE - idempotency
+    # -----------------------------------------------
+    - name: Delete Script DT - idempotency
+      microsoft.mecm.application_deployment_type: *delete_script_dt
+      register: _script_delete_idempotent
+
+    - name: Get DTs after Script delete
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+      register: _info_after_script_delete
+
+    - name: Assert Script delete, idempotency, and only MSI DT remains
+      ansible.builtin.assert:
+        that:
+          - _script_delete is changed
+          - _script_delete_idempotent is not changed
+          - _info_after_script_delete.deployment_types | length == 1
+          - _info_after_script_delete.deployment_types[0].name == test_msi_dt_name
+
+    # =======================================================
+    # DELETE - MSI DT
+    # =======================================================
+
+    # -----------------------------------------------
+    # MSI DELETE - check mode
+    # -----------------------------------------------
+    - name: Delete MSI DT - check mode
+      microsoft.mecm.application_deployment_type:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_msi_dt_name }}"
+        type: msi
+        content_location: "{{ test_content_location }}"
+        state: absent
+      check_mode: true
+      register: _msi_delete_check
+
+    - name: Get DTs after MSI check mode delete
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+      register: _info_after_msi_delete_check
+
+    - name: Assert check mode MSI delete did not remove
+      ansible.builtin.assert:
+        that:
+          - _msi_delete_check is changed
+          - _info_after_msi_delete_check.deployment_types | length == 1
+
+    # -----------------------------------------------
+    # MSI DELETE - actual
+    # -----------------------------------------------
+    - name: Delete MSI DT
+      microsoft.mecm.application_deployment_type: &delete_msi_dt
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+        deployment_type_name: "{{ test_msi_dt_name }}"
+        type: msi
+        content_location: "{{ test_content_location }}"
+        state: absent
+      register: _msi_delete
+
+    # -----------------------------------------------
+    # MSI DELETE - idempotency
+    # -----------------------------------------------
+    - name: Delete MSI DT - idempotency
+      microsoft.mecm.application_deployment_type: *delete_msi_dt
+      register: _msi_delete_idempotent
+
+    - name: Get DTs after MSI delete
+      microsoft.mecm.application_deployment_type_info:
+        site_code: "{{ test_site_code }}"
+        application_name: "{{ test_app_name }}"
+      register: _info_after_msi_delete
+
+    - name: Assert MSI delete, idempotency, and no DTs remain
+      ansible.builtin.assert:
+        that:
+          - _msi_delete is changed
+          - _msi_delete_idempotent is not changed
+          - _info_after_msi_delete.deployment_types | length == 0
+
+  always:
+    - name: Cleanup - ensure test application and all DTs are removed
+      microsoft.mecm.application:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_app_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - remove detection script
+      ansible.windows.win_file:
+        path: "{{ test_script_file }}"
+        state: absent
+      ignore_errors: true

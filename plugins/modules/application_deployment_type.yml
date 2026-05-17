@@ -1,0 +1,147 @@
+---
+# Copyright: (c) 2025, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: application_deployment_type
+  short_description: Manage deployment types on applications in Microsoft Endpoint Configuration Manager (MECM)
+  description:
+    - This module adds, updates, or removes deployment types on applications in a Configuration Manager site.
+    - Supports MSI deployment types using Add-CMMsiDeploymentType and Set-CMMsiDeploymentType.
+    - Supports Script deployment types using Add-CMScriptDeploymentType and Set-CMScriptDeploymentType.
+    - For more information, see
+      U(https://learn.microsoft.com/en-us/powershell/module/configurationmanager/add-cmmsiDeploymentType) and
+      U(https://learn.microsoft.com/en-us/powershell/module/configurationmanager/add-cmscriptDeploymentType).
+  version_added: "1.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+      type: str
+      required: true
+    application_name:
+      description:
+        - The name of the application to add or remove the deployment type on.
+        - The application must already exist.
+      type: str
+      required: true
+    type:
+      description:
+        - The type of deployment type to add.
+        - C(msi) uses Add-CMMsiDeploymentType.
+        - C(script) uses Add-CMScriptDeploymentType.
+      type: str
+      required: true
+      choices:
+        - msi
+        - script
+    state:
+      description:
+        - Whether the deployment type should be present or absent.
+      type: str
+      choices:
+        - present
+        - absent
+      default: present
+    content_location:
+      description:
+        - The UNC path or local path to the MSI file.
+        - Required when O(type=msi).
+        - Used as the idempotency key for MSI deployment types.
+      type: str
+      required: false
+    deployment_type_name:
+      description:
+        - The display name of the deployment type.
+        - Serves as the unique identifier for idempotency.
+        - If a deployment type with this name already exists, its fields are compared and updated if needed.
+      type: str
+      required: true
+    install_command:
+      description:
+        - The command line to install the application.
+        - Required when O(type=script).
+      type: str
+      required: false
+    script_language:
+      description:
+        - The language of the detection script.
+        - Required when O(type=script).
+      type: str
+      required: false
+      choices:
+        - PowerShell
+        - VBScript
+        - JavaScript
+    script_file:
+      description:
+        - The path to the detection script file on the target host.
+        - Required when O(type=script).
+      type: str
+      required: false
+  notes:
+    - This module requires the Microsoft Endpoint Configuration Manager Console to be installed on the target machine.
+    - The application specified by O(application_name) must already exist before adding a deployment type.
+    - "Idempotency is determined by the O(deployment_type_name)"
+    - If a deployment type with the same name exists, other fields are compared and updated if needed.
+    - "For MSI types, O(content_location) is compared. For Script types, O(install_command) is compared."
+    - This module supports idempotency and check mode.
+    - "B(Permissions): Requires administrative access to manage MECM application deployment types."
+  author:
+    - Ansible Ecosystem Engineering team (@ansible)
+    - Shahar Golshani (@shahargolshani)
+
+EXAMPLES: |
+  - name: Add an MSI deployment type to an application
+    microsoft.mecm.application_deployment_type:
+      site_code: "XYZ"
+      application_name: "My Application"
+      deployment_type_name: "My App MSI"
+      type: msi
+      content_location: "\\\\server\\share\\app.msi"
+      state: present
+
+  - name: Add a Script deployment type with PowerShell detection
+    microsoft.mecm.application_deployment_type:
+      site_code: "XYZ"
+      application_name: "My Application"
+      deployment_type_name: "My Script Installer"
+      type: script
+      install_command: "install.cmd /S"
+      script_language: PowerShell
+      script_file: "C:\\Scripts\\detect_app.ps1"
+      state: present
+
+  - name: Update the content location of an MSI deployment type
+    microsoft.mecm.application_deployment_type:
+      site_code: "XYZ"
+      application_name: "My Application"
+      deployment_type_name: "My App MSI"
+      type: msi
+      content_location: "\\\\new-server\\share\\app.msi"
+
+  - name: Remove a deployment type by name
+    microsoft.mecm.application_deployment_type:
+      site_code: "XYZ"
+      application_name: "My Application"
+      deployment_type_name: "My App MSI"
+      type: msi
+      content_location: "\\\\server\\share\\app.msi"
+      state: absent
+
+RETURN:
+  deployment_type:
+    description: Identifying information about the deployment type.
+    returned: on success
+    type: dict
+    sample: |-
+      {
+        "name": "My Application - Windows Installer",
+        "id": "16777500",
+        "technology": "MSI"
+      }
