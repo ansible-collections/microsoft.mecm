@@ -1,0 +1,571 @@
+---
+# Integration tests for boundaries and boundaries_info modules
+
+- name: Set test boundary variables
+  ansible.builtin.set_fact:
+    # IPSubnet boundary
+    test_subnet_name: "{{ unique_test_id }}-subnet"
+    test_subnet_value: "172.31.250.0"
+    # IPRange boundary
+    test_iprange_name: "{{ unique_test_id }}-iprange"
+    test_iprange_value: "172.31.251.1-172.31.251.10"
+    # IPV6Prefix boundary
+    test_ipv6_name: "{{ unique_test_id }}-ipv6"
+    test_ipv6_value: "2001:0db8:0000:0001"
+    # VPN boundary
+    test_vpn_name: "{{ unique_test_id }}-vpn"
+    test_vpn_value: "Auto:On"
+    # VPN boundary by connection name
+    test_vpn_named_name: "{{ unique_test_id }}-vpn-named"
+    test_vpn_named_value: "Name:CorpVPN-{{ unique_test_id }}"
+
+- name: Test boundaries lifecycle
+  block:
+
+    # ==========================================================
+    # SECTION 1 — IPSubnet: check mode, create, idempotency
+    # ==========================================================
+
+    - name: (IPSubnet) Create boundary - check mode
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        state: present
+      check_mode: true
+      register: _subnet_create_check
+
+    - name: (IPSubnet) Verify boundary does not exist after check mode
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: IPSubnet
+        name: "{{ test_subnet_name }}"
+      register: _info_after_subnet_check
+
+    - name: (IPSubnet) Assert check mode reported changed but made no change
+      ansible.builtin.assert:
+        that:
+          - _subnet_create_check is changed
+          - _info_after_subnet_check.boundaries | length == 0
+
+    - name: (IPSubnet) Create boundary
+      microsoft.mecm.boundaries: &create_subnet
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        state: present
+      register: _subnet_create
+
+    - name: (IPSubnet) Create boundary - idempotency
+      microsoft.mecm.boundaries: *create_subnet
+      register: _subnet_create_idempotent
+
+    - name: (IPSubnet) Get boundary info after creation
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: IPSubnet
+        name: "{{ test_subnet_name }}"
+      register: _info_subnet_created
+
+    - name: (IPSubnet) Assert creation, idempotency and info values
+      ansible.builtin.assert:
+        that:
+          - _subnet_create is changed
+          - _subnet_create_idempotent is not changed
+          - _info_subnet_created.boundaries | length == 1
+          - _info_subnet_created.boundaries[0].name == test_subnet_name
+          - _info_subnet_created.boundaries[0].type == "IPSubnet"
+          - _info_subnet_created.boundaries[0].value == test_subnet_value
+
+    # ==========================================================
+    # SECTION 2 — IPSubnet: rename with new_name
+    # ==========================================================
+
+    - name: (IPSubnet) Rename boundary - check mode
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        new_name: "{{ test_subnet_name }}-renamed"
+        state: present
+      check_mode: true
+      register: _subnet_rename_check
+
+    - name: (IPSubnet) Verify name unchanged after check mode rename
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}"
+        type: IPSubnet
+      register: _info_after_rename_check
+
+    - name: (IPSubnet) Assert check mode rename reported changed but kept original name
+      ansible.builtin.assert:
+        that:
+          - _subnet_rename_check is changed
+          - _info_after_rename_check.boundaries[0].name == test_subnet_name
+
+    - name: (IPSubnet) Rename boundary
+      microsoft.mecm.boundaries: &rename_subnet
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        new_name: "{{ test_subnet_name }}-renamed"
+        state: present
+      register: _subnet_rename
+
+    - name: (IPSubnet) Rename boundary - idempotency
+      microsoft.mecm.boundaries: *rename_subnet
+      register: _subnet_rename_idempotent
+
+    - name: (IPSubnet) Get boundary info after rename
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}-renamed"
+        type: IPSubnet
+      register: _info_subnet_renamed
+
+    - name: (IPSubnet) Assert rename and idempotency
+      ansible.builtin.assert:
+        that:
+          - _subnet_rename is changed
+          - _subnet_rename_idempotent is not changed
+          - _info_subnet_renamed.boundaries | length == 1
+          - _info_subnet_renamed.boundaries[0].name == test_subnet_name ~ "-renamed"
+
+    # ==========================================================
+    # SECTION 3 — IPRange: create and verify
+    # ==========================================================
+
+    - name: (IPRange) Create boundary
+      microsoft.mecm.boundaries: &create_iprange
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_iprange_name }}"
+        type: IPRange
+        value: "{{ test_iprange_value }}"
+        state: present
+      register: _iprange_create
+
+    - name: (IPRange) Create boundary - idempotency
+      microsoft.mecm.boundaries: *create_iprange
+      register: _iprange_create_idempotent
+
+    - name: (IPRange) Get boundary info
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: IPRange
+        name: "{{ test_iprange_name }}"
+      register: _info_iprange
+
+    - name: (IPRange) Assert creation, idempotency and info values
+      ansible.builtin.assert:
+        that:
+          - _iprange_create is changed
+          - _iprange_create_idempotent is not changed
+          - _info_iprange.boundaries | length == 1
+          - _info_iprange.boundaries[0].type == "IPRange"
+          - _info_iprange.boundaries[0].value == test_iprange_value
+
+    # ==========================================================
+    # SECTION 4 — IPV6Prefix: create and verify
+    # ==========================================================
+
+    - name: (IPV6Prefix) Create boundary
+      microsoft.mecm.boundaries: &create_ipv6
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_ipv6_name }}"
+        type: IPV6Prefix
+        value: "{{ test_ipv6_value }}"
+        state: present
+      register: _ipv6_create
+
+    - name: (IPV6Prefix) Create boundary - idempotency
+      microsoft.mecm.boundaries: *create_ipv6
+      register: _ipv6_create_idempotent
+
+    - name: (IPV6Prefix) Get boundary info
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: IPV6Prefix
+        name: "{{ test_ipv6_name }}"
+      register: _info_ipv6
+
+    - name: (IPV6Prefix) Assert creation, idempotency and info values
+      ansible.builtin.assert:
+        that:
+          - _ipv6_create is changed
+          - _ipv6_create_idempotent is not changed
+          - _info_ipv6.boundaries | length == 1
+          - _info_ipv6.boundaries[0].type == "IPV6Prefix"
+          - _info_ipv6.boundaries[0].value == test_ipv6_value
+
+    # ==========================================================
+    # SECTION 5 — VPN (Auto:On): create and verify
+    # ==========================================================
+
+    - name: (VPN Auto:On) Create boundary
+      microsoft.mecm.boundaries: &create_vpn
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_vpn_name }}"
+        type: Vpn
+        value: "{{ test_vpn_value }}"
+        state: present
+      register: _vpn_create
+
+    - name: (VPN Auto:On) Create boundary - idempotency
+      microsoft.mecm.boundaries: *create_vpn
+      register: _vpn_create_idempotent
+
+    - name: (VPN Auto:On) Get boundary info
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: Vpn
+        name: "{{ test_vpn_name }}"
+      register: _info_vpn
+
+    - name: (VPN Auto:On) Assert creation, idempotency and info values
+      ansible.builtin.assert:
+        that:
+          - _vpn_create is changed
+          - _vpn_create_idempotent is not changed
+          - _info_vpn.boundaries | length == 1
+          - _info_vpn.boundaries[0].type == "Vpn"
+          - _info_vpn.boundaries[0].value == test_vpn_value
+
+    # ==========================================================
+    # SECTION 6 — VPN (Name:...): create and verify
+    # ==========================================================
+
+    - name: (VPN Name:...) Create boundary
+      microsoft.mecm.boundaries: &create_vpn_named
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_vpn_named_name }}"
+        type: Vpn
+        value: "{{ test_vpn_named_value }}"
+        state: present
+      register: _vpn_named_create
+
+    - name: (VPN Name:...) Create boundary - idempotency
+      microsoft.mecm.boundaries: *create_vpn_named
+      register: _vpn_named_create_idempotent
+
+    - name: (VPN Name:...) Get boundary info
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: Vpn
+        name: "{{ test_vpn_named_name }}"
+      register: _info_vpn_named
+
+    - name: (VPN Name:...) Assert creation, idempotency and info values
+      ansible.builtin.assert:
+        that:
+          - _vpn_named_create is changed
+          - _vpn_named_create_idempotent is not changed
+          - _info_vpn_named.boundaries | length == 1
+          - _info_vpn_named.boundaries[0].value == test_vpn_named_value
+
+    # ==========================================================
+    # SECTION 7 — Validation: invalid VPN value is rejected
+    # ==========================================================
+
+    - name: (VPN) Create boundary with invalid value - should fail
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ unique_test_id }}-vpn-invalid"
+        type: Vpn
+        value: "InvalidFormat"
+        state: present
+      register: _vpn_invalid
+      ignore_errors: true
+
+    - name: Assert invalid VPN value was rejected with descriptive error
+      ansible.builtin.assert:
+        that:
+          - _vpn_invalid is failed
+          - "'Invalid value' in _vpn_invalid.msg"
+          - "'Auto:On' in _vpn_invalid.msg"
+          - "'Name:' in _vpn_invalid.msg"
+          - "'Description:' in _vpn_invalid.msg"
+
+    # ==========================================================
+    # SECTION 8 — Warning: type:value exists under a different name
+    # ==========================================================
+
+    - name: (IPSubnet) Try to create boundary with same type:value but different name - should warn
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}-duplicate-attempt"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        state: present
+      register: _subnet_duplicate
+
+    - name: Assert duplicate type:value attempt was not changed and produced a warning
+      ansible.builtin.assert:
+        that:
+          - _subnet_duplicate is not changed
+          - _subnet_duplicate.warnings | length > 0
+          - "'already exists' in _subnet_duplicate.warnings[0]"
+
+    # ==========================================================
+    # SECTION 9 — Info module: system-wide queries
+    # ==========================================================
+
+    - name: (Info) Get ALL boundaries in the system
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+      register: _info_all
+
+    - name: (Info) Get boundaries filtered by type IPSubnet
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: IPSubnet
+      register: _info_by_type
+
+    - name: (Info) Get boundaries filtered by name
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}-renamed"
+      register: _info_by_name
+
+    - name: Assert info queries return expected results
+      ansible.builtin.assert:
+        that:
+          # System-wide query should include all test boundaries
+          - _info_all.boundaries | length >= 5
+          - _info_all.boundaries | selectattr('name', 'equalto', test_subnet_name ~ '-renamed') | list | length == 1
+          - _info_all.boundaries | selectattr('name', 'equalto', test_iprange_name) | list | length == 1
+          - _info_all.boundaries | selectattr('name', 'equalto', test_ipv6_name) | list | length == 1
+          - _info_all.boundaries | selectattr('name', 'equalto', test_vpn_name) | list | length == 1
+          # Type filter returns only IPSubnet boundaries
+          - _info_by_type.boundaries | map(attribute='type') | unique | list == ['IPSubnet']
+          - _info_by_type.boundaries | selectattr('name', 'equalto', test_subnet_name ~ '-renamed') | list | length == 1
+          # Name filter returns the renamed subnet boundary
+          - _info_by_name.boundaries | length == 1
+          - _info_by_name.boundaries[0].type == "IPSubnet"
+          - _info_by_name.boundaries[0].value == test_subnet_value
+
+    # ==========================================================
+    # SECTION 10 — Delete: check mode, delete, idempotency
+    # (all test boundaries verified with boundaries_info after each step)
+    # ==========================================================
+
+    - name: (IPSubnet) Delete boundary - check mode
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}-renamed"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        state: absent
+      check_mode: true
+      register: _subnet_delete_check
+
+    - name: (IPSubnet) Verify boundary still exists after check mode delete
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}-renamed"
+        type: IPSubnet
+      register: _info_after_subnet_delete_check
+
+    - name: Assert check mode delete reported changed but kept the boundary
+      ansible.builtin.assert:
+        that:
+          - _subnet_delete_check is changed
+          - _info_after_subnet_delete_check.boundaries | length == 1
+
+    - name: (IPSubnet) Delete boundary
+      microsoft.mecm.boundaries: &delete_subnet
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}-renamed"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        state: absent
+      register: _subnet_delete
+
+    - name: (IPSubnet) Delete boundary - idempotency
+      microsoft.mecm.boundaries: *delete_subnet
+      register: _subnet_delete_idempotent
+
+    - name: (IPSubnet) Verify boundary no longer exists
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}-renamed"
+        type: IPSubnet
+      register: _info_after_subnet_delete
+
+    - name: Assert IPSubnet delete and idempotency
+      ansible.builtin.assert:
+        that:
+          - _subnet_delete is changed
+          - _subnet_delete_idempotent is not changed
+          - _info_after_subnet_delete.boundaries | length == 0
+
+    - name: (IPRange) Delete boundary
+      microsoft.mecm.boundaries: &delete_iprange
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_iprange_name }}"
+        type: IPRange
+        value: "{{ test_iprange_value }}"
+        state: absent
+      register: _iprange_delete
+
+    - name: (IPRange) Delete boundary - idempotency
+      microsoft.mecm.boundaries: *delete_iprange
+      register: _iprange_delete_idempotent
+
+    - name: (IPRange) Verify boundary no longer exists
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: IPRange
+        name: "{{ test_iprange_name }}"
+      register: _info_after_iprange_delete
+
+    - name: Assert IPRange delete and idempotency
+      ansible.builtin.assert:
+        that:
+          - _iprange_delete is changed
+          - _iprange_delete_idempotent is not changed
+          - _info_after_iprange_delete.boundaries | length == 0
+
+    - name: (IPV6Prefix) Delete boundary
+      microsoft.mecm.boundaries: &delete_ipv6
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_ipv6_name }}"
+        type: IPV6Prefix
+        value: "{{ test_ipv6_value }}"
+        state: absent
+      register: _ipv6_delete
+
+    - name: (IPV6Prefix) Delete boundary - idempotency
+      microsoft.mecm.boundaries: *delete_ipv6
+      register: _ipv6_delete_idempotent
+
+    - name: (IPV6Prefix) Verify boundary no longer exists
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: IPV6Prefix
+        name: "{{ test_ipv6_name }}"
+      register: _info_after_ipv6_delete
+
+    - name: Assert IPV6Prefix delete and idempotency
+      ansible.builtin.assert:
+        that:
+          - _ipv6_delete is changed
+          - _ipv6_delete_idempotent is not changed
+          - _info_after_ipv6_delete.boundaries | length == 0
+
+    - name: (VPN Auto:On) Delete boundary
+      microsoft.mecm.boundaries: &delete_vpn
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_vpn_name }}"
+        type: Vpn
+        value: "{{ test_vpn_value }}"
+        state: absent
+      register: _vpn_delete
+
+    - name: (VPN Auto:On) Delete boundary - idempotency
+      microsoft.mecm.boundaries: *delete_vpn
+      register: _vpn_delete_idempotent
+
+    - name: (VPN Auto:On) Verify boundary no longer exists
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: Vpn
+        name: "{{ test_vpn_name }}"
+      register: _info_after_vpn_delete
+
+    - name: Assert VPN Auto:On delete and idempotency
+      ansible.builtin.assert:
+        that:
+          - _vpn_delete is changed
+          - _vpn_delete_idempotent is not changed
+          - _info_after_vpn_delete.boundaries | length == 0
+
+    - name: (VPN Name:...) Delete boundary
+      microsoft.mecm.boundaries: &delete_vpn_named
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_vpn_named_name }}"
+        type: Vpn
+        value: "{{ test_vpn_named_value }}"
+        state: absent
+      register: _vpn_named_delete
+
+    - name: (VPN Name:...) Delete boundary - idempotency
+      microsoft.mecm.boundaries: *delete_vpn_named
+      register: _vpn_named_delete_idempotent
+
+    - name: (VPN Name:...) Verify boundary no longer exists
+      microsoft.mecm.boundaries_info:
+        site_code: "{{ test_site_code }}"
+        type: Vpn
+        name: "{{ test_vpn_named_name }}"
+      register: _info_after_vpn_named_delete
+
+    - name: Assert VPN Name:... delete and idempotency
+      ansible.builtin.assert:
+        that:
+          - _vpn_named_delete is changed
+          - _vpn_named_delete_idempotent is not changed
+          - _info_after_vpn_named_delete.boundaries | length == 0
+
+  always:
+    # ----------------------------------------------------------
+    # Cleanup: ensure all test boundaries are removed even if
+    # the test block failed partway through
+    # ----------------------------------------------------------
+    - name: Cleanup - remove IPSubnet test boundary (original name)
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - remove IPSubnet test boundary (renamed)
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_subnet_name }}-renamed"
+        type: IPSubnet
+        value: "{{ test_subnet_value }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - remove IPRange test boundary
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_iprange_name }}"
+        type: IPRange
+        value: "{{ test_iprange_value }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - remove IPV6Prefix test boundary
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_ipv6_name }}"
+        type: IPV6Prefix
+        value: "{{ test_ipv6_value }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - remove VPN Auto:On test boundary
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_vpn_name }}"
+        type: Vpn
+        value: "{{ test_vpn_value }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - remove VPN Name:... test boundary
+      microsoft.mecm.boundaries:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_vpn_named_name }}"
+        type: Vpn
+        value: "{{ test_vpn_named_value }}"
+        state: absent
+      ignore_errors: true

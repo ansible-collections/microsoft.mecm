@@ -1,0 +1,134 @@
+---
+# Copyright: (c) 2025, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: boundaries_info
+  short_description: Retrieve information about site boundaries in Microsoft Endpoint Configuration Manager (MECM)
+  description:
+    - This module retrieves information about one or more site boundaries from a Configuration Manager site.
+    - Uses the V(Get-CMBoundary) PowerShell cmdlet.
+    - When O(type) is not specified, all boundaries defined in the site are returned.
+    - When O(type) is specified, only boundaries of that type are returned.
+    - For more information, see
+      U(https://learn.microsoft.com/en-us/powershell/module/configurationmanager/get-cmboundary).
+  version_added: "1.2.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+        - This determines which CM site drive to use and is required for connecting to the correct domain.
+      type: str
+      required: true
+    name:
+      description:
+        - Optional boundary name filter (matches the V(Description)/V(BoundaryName) field in MECM).
+        - When provided, only the boundary with this exact name is returned.
+        - Can be combined with O(type) to further narrow the result.
+        - When omitted, boundaries are not filtered by name.
+      type: str
+      required: false
+    type:
+      description:
+        - Optional boundary type filter.
+        - When provided, only boundaries of this type are returned.
+        - When omitted, all boundaries are returned regardless of type.
+        - V(IPSubnet) – IP subnet boundaries.
+        - V(ADSite) – Active Directory site boundaries.
+        - V(IPV6Prefix) – IPv6 prefix boundaries.
+        - V(IPRange) – IP address range boundaries.
+        - V(Vpn) – VPN boundaries.
+      type: str
+      required: false
+      choices:
+        - IPSubnet
+        - ADSite
+        - IPV6Prefix
+        - IPRange
+        - Vpn
+  notes:
+    - This module requires the Microsoft Endpoint Configuration Manager Console to be installed on the target machine.
+    - This is a read-only module; it never modifies the site configuration.
+    - This module supports check mode (no difference in behaviour since it is read-only).
+    - "B(Permissions): Requires read access to MECM site boundaries."
+  author:
+    - Ansible Ecosystem Engineering team (@ansible)
+    - Shahar Golshani (@shahargolshani)
+
+EXAMPLES: |
+  - name: Create the PS drive for the site
+    microsoft.mecm.site_ps_drive:
+      site_code: XYZ
+      state: present
+
+  - name: Retrieve all boundaries in the site
+    microsoft.mecm.boundaries_info:
+      site_code: "XYZ"
+    register: all_boundaries
+
+  - name: Retrieve only IP subnet boundaries
+    microsoft.mecm.boundaries_info:
+      site_code: "XYZ"
+      type: IPSubnet
+    register: subnet_boundaries
+
+  - name: Retrieve only Active Directory site boundaries
+    microsoft.mecm.boundaries_info:
+      site_code: "XYZ"
+      type: ADSite
+    register: ad_site_boundaries
+
+  - name: Retrieve only IP range boundaries
+    microsoft.mecm.boundaries_info:
+      site_code: "XYZ"
+      type: IPRange
+    register: ip_range_boundaries
+
+  - name: Retrieve a specific boundary by name
+    microsoft.mecm.boundaries_info:
+      site_code: "XYZ"
+      name: "Corporate LAN"
+    register: corp_lan_boundary
+
+  - name: Retrieve a specific boundary by name and type
+    microsoft.mecm.boundaries_info:
+      site_code: "XYZ"
+      name: "Corporate LAN"
+      type: IPSubnet
+    register: corp_lan_subnet
+
+  - name: Print all boundary names and values
+    ansible.builtin.debug:
+      msg: "{{ item.name }} -> {{ item.value }}"
+    loop: "{{ all_boundaries.boundaries }}"
+
+RETURN:
+  boundaries:
+    description: List of boundaries found in the MECM site, optionally filtered by type.
+    returned: always
+    type: list
+    elements: dict
+    sample: |-
+      [
+        {
+          "boundary_id": "16777217",
+          "name": "Corporate LAN",
+          "type": "IPSubnet",
+          "type_id": 0,
+          "value": "192.168.1.0/24",
+          "group_count": 1
+        },
+        {
+          "boundary_id": "16777218",
+          "name": "HQ AD Site",
+          "type": "ADSite",
+          "type_id": 1,
+          "value": "Default-First-Site-Name",
+          "group_count": 2
+        }
+      ]

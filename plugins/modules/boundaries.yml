@@ -1,0 +1,212 @@
+---
+# Copyright: (c) 2025, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: boundaries
+  short_description: Create, rename, or delete site boundaries in Microsoft Endpoint Configuration Manager (MECM)
+  description:
+    - This module creates, renames, or deletes site boundaries in a Configuration Manager site.
+    - Uses the V(New-CMBoundary), V(Set-CMBoundary), and V(Remove-CMBoundary) PowerShell cmdlets.
+    - The unique identifier of a boundary is the combination of O(type) and O(value).
+      There can be multiple boundaries with the same O(name), but not with the same O(type) and O(value).
+    - O(name), O(type), and O(value) are the lookup key used to find an existing boundary.
+    - O(new_name) is the only field that can be updated on an existing boundary.
+      To change O(type) or O(value), remove the old boundary with O(state=absent) and create a new one.
+    - For more information, see
+      U(https://learn.microsoft.com/en-us/powershell/module/configurationmanager/new-cmboundary).
+  version_added: "1.2.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+        - This determines which CM site drive to use and is required for connecting to the correct domain.
+      type: str
+      required: true
+    name:
+      description:
+        - The display name (V(DisplayName)) of the boundary used as part of the lookup key.
+        - Optional for both O(state=present) and O(state=absent).
+        - When omitted the lookup is performed by O(type) and O(value) only, matching any boundary
+          regardless of its display name.
+        - When provided it is included in the lookup; if no boundary matches the combination of
+          O(name) + O(type) + O(value) the module is a no-op (C(changed=false)).
+      type: str
+      required: false
+      default: ''
+    type:
+      description:
+        - The type of the boundary. Together with O(value), forms the unique identifier.
+        - Required for both O(state=present) and O(state=absent).
+        - V(IPSubnet) - an IP subnet boundary. Provide the subnet ID (network address only, e.g. C(192.168.1.0)).
+          MECM stores only the subnet ID; the network mask is used internally during creation but is not persisted.
+        - V(ADSite) - an Active Directory site boundary (e.g. C(Default-First-Site-Name)).
+        - V(IPV6Prefix) - an IPv6 prefix boundary. Provide the full 64-bit network prefix in colon-separated group notation, e.g. C(2001:0db8:0000:0001).
+        - V(IPRange) - an IP address range boundary (e.g. C(192.168.1.1-192.168.1.254)).
+        - V(Vpn) - a VPN boundary. See O(value) for the three accepted value formats.
+      type: str
+      required: true
+      choices:
+        - IPSubnet
+        - ADSite
+        - IPV6Prefix
+        - IPRange
+        - Vpn
+    value:
+      description:
+        - The value that defines the boundary, appropriate for the chosen O(type).
+        - Together with O(type), forms the unique identifier used to look up the boundary.
+        - Required for both O(state=present) and O(state=absent).
+        - For V(IPSubnet), provide the subnet ID (network address only), e.g. C(192.168.1.0).
+          Do not include the prefix length or subnet mask — MECM stores only the subnet ID.
+        - For V(ADSite), provide the Active Directory site name, e.g. C(Default-First-Site-Name).
+        - For V(IPV6Prefix), provide the full 64-bit network prefix (first 64 bits) in colon-separated group notation
+          with no prefix-length suffix, e.g. C(2001:0db8:0000:0001).
+        - For V(IPRange), provide the range as C(start-end), e.g. C(192.168.1.1-192.168.1.254).
+        - "For V(Vpn), the value must be one of three formats:"
+        - C(Auto:On) — automatically detect the VPN connection.
+        - C(Name:<vpn_name>) — match by VPN connection name, e.g. C(Name:CorpVPN).
+        - C(Description:<vpn_description>) — match by VPN connection description, e.g. C(Description:Corporate VPN).
+        - The module validates the value format when O(type=Vpn) and fails immediately if it does not match.
+      type: str
+      required: true
+    new_name:
+      description:
+        - New display name to assign to the boundary when it already exists.
+        - When provided and different from the current V(DisplayName), V(Set-CMBoundary -NewName) is called.
+        - Ignored when the boundary does not exist (creation always uses O(name) as the display name).
+        - When omitted or empty the display name is left unchanged.
+      type: str
+      required: false
+      default: ''
+    state:
+      description:
+        - Whether the boundary should exist or be removed.
+        - V(present) creates the boundary if it does not exist.
+          If it exists, renames it when O(new_name) is provided and differs from the current name.
+        - V(absent) removes the boundary when found by the lookup key O(type) + O(value) + O(name).
+          O(name) is not required for removal — when omitted the boundary is located by O(type) and O(value) alone.
+          When O(name) is provided it is included in the lookup; if no boundary matches all three criteria
+          the module is a no-op and reports C(changed=false).
+      type: str
+      choices:
+        - present
+        - absent
+      default: present
+  notes:
+    - This module requires the Microsoft Endpoint Configuration Manager Console to be installed on the target machine.
+    - To change the O(type) or O(value) of an existing boundary, remove it with O(state=absent) first and
+      then recreate it with the new O(type) and O(value).
+    - This module supports idempotency and check mode (V(-WhatIf)).
+    - "B(Permissions): Requires administrative access to create, update, and delete MECM boundaries."
+  author:
+    - Ansible Ecosystem Engineering team (@ansible)
+    - Shahar Golshani (@shahargolshani)
+
+EXAMPLES: |
+  - name: Create the PS drive for the site
+    microsoft.mecm.site_ps_drive:
+      site_code: XYZ
+      state: present
+
+  - name: Create an IP subnet boundary (subnet ID only, not CIDR notation)
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "Corporate LAN"
+      type: IPSubnet
+      value: "192.168.1.0"
+      state: present
+
+  - name: Create an Active Directory site boundary
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "HQ AD Site"
+      type: ADSite
+      value: "Default-First-Site-Name"
+      state: present
+
+  - name: Create an IP range boundary
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "Server Range"
+      type: IPRange
+      value: "10.0.0.1-10.0.0.254"
+      state: present
+
+  - name: Create an IPv6 prefix boundary
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "IPv6 Office"
+      type: IPV6Prefix
+      value: "2001:0db8:0000:0001"
+      state: present
+
+  - name: Create a VPN boundary - auto detect
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "VPN Auto"
+      type: Vpn
+      value: "Auto:On"
+      state: present
+
+  - name: Create a VPN boundary - match by connection name
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "Corp VPN"
+      type: Vpn
+      value: "Name:CorpVPN"
+      state: present
+
+  - name: Create a VPN boundary - match by connection description
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "Corp VPN Desc"
+      type: Vpn
+      value: "Description:Corporate VPN"
+      state: present
+
+  - name: Rename an existing boundary (idempotent)
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "Corporate LAN"
+      type: IPSubnet
+      value: "192.168.1.0"
+      new_name: "Corporate LAN - Primary"
+      state: present
+
+  - name: Check mode - preview removal without making changes
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "Corporate LAN"
+      type: IPSubnet
+      value: "192.168.1.0"
+      state: absent
+    check_mode: true
+
+  - name: Remove a boundary
+    microsoft.mecm.boundaries:
+      site_code: "XYZ"
+      name: "Corporate LAN"
+      type: IPSubnet
+      value: "192.168.1.0"
+      state: absent
+
+RETURN:
+  boundary:
+    description: Details of the boundary that was created, renamed, or removed.
+    returned: on success (not returned in check mode for create/rename)
+    type: dict
+    sample: |-
+      {
+        "boundary_id": "16777217",
+        "name": "Corporate LAN",
+        "type": "IPSubnet",
+        "type_id": 0,
+        "value": "192.168.1.0",
+        "group_count": 1
+      }
