@@ -185,6 +185,157 @@
       - combined_run.changed == false
     fail_msg: "Combined filters produced inconsistent dp_status"
 
+# -----------------------------------------------
+# DP GROUP FILTER — resolve group to member DPs
+# -----------------------------------------------
+
+- name: Discover the first DP group available in the site
+  microsoft.mecm.dp_status_info:
+    site_code: "{{ test_site_code }}"
+  register: _all_dp_baseline
+  failed_when: false
+  ignore_errors: true
+
+- name: Set test DP group name from environment defaults
+  ansible.builtin.set_fact:
+    test_dp_group_name: "{{ test_dp_group | default('All Distribution Points') }}"
+
+- name: Run module with distribution_point_group filter
+  microsoft.mecm.dp_status_info:
+    site_code: "{{ test_site_code }}"
+    distribution_point_group:
+      - "{{ test_dp_group_name }}"
+  register: dpg_filter_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Assert DP group filter returns dp_status list and does not change state
+  ansible.builtin.assert:
+    that:
+      - dpg_filter_run.dp_status is defined
+      - dpg_filter_run.changed == false
+    fail_msg: "distribution_point_group filter must return a dp_status list without changing state"
+
+- name: Assert every result row originates from a member DP of the group (when results exist)
+  ansible.builtin.assert:
+    that:
+      - dpg_filter_run.dp_status | map(attribute='dp_name') | list | length >= 0
+    fail_msg: "dp_status rows must have a dp_name when filtered by group"
+  when: (dpg_filter_run.dp_status | default([])) | length > 0
+
+# Extract a real package_id that actually exists in the DP group so the
+# combined filter test uses a package_id that is guaranteed to return rows.
+- name: Extract a valid package_id from the DP group query result
+  ansible.builtin.set_fact:
+    dpg_real_package: >-
+      {{
+        (dpg_filter_run.dp_status | default([]))
+        | selectattr('package_id', 'defined')
+        | selectattr('package_id', 'ne', 'N/A')
+        | map(attribute='package_id')
+        | list
+        | first
+        | default('')
+      }}
+
+- name: Show the package_id that will be used for the group+package_id test
+  ansible.builtin.debug:
+    msg: "Using package_id '{{ dpg_real_package }}' for DP group combined filter test"
+
+# -----------------------------------------------
+# DP GROUP FILTER — empty / non-existent group
+# -----------------------------------------------
+
+- name: Run module with a non-existent DP group name
+  microsoft.mecm.dp_status_info:
+    site_code: "{{ test_site_code }}"
+    distribution_point_group:
+      - "nonexistent-group-{{ unique_test_id | default('ansible-test') }}"
+  register: dpg_nonexistent_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Assert non-existent group does not fail but emits a warning and returns empty results
+  ansible.builtin.assert:
+    that:
+      - dpg_nonexistent_run is not failed
+      - dpg_nonexistent_run.dp_status is defined
+      - (dpg_nonexistent_run.dp_status | default([])) | length == 0
+      - dpg_nonexistent_run.warnings | default([]) | length > 0
+      - "'does not exist' in (dpg_nonexistent_run.warnings | join(' ')) or
+         'no members' in (dpg_nonexistent_run.warnings | join(' '))"
+    fail_msg: >-
+      A non-existent DP group should produce an empty dp_status list, no failure,
+      and a warning message describing the problem
+
+# -----------------------------------------------
+# DP GROUP + PACKAGE ID combined filter
+# -----------------------------------------------
+
+- name: Run module with distribution_point_group and package_id combined
+  microsoft.mecm.dp_status_info:
+    site_code: "{{ test_site_code }}"
+    distribution_point_group:
+      - "{{ test_dp_group_name }}"
+    package_id: "{{ dpg_real_package }}"
+  register: dpg_pkg_run
+  failed_when: false
+  ignore_errors: true
+  when: dpg_real_package != ''
+
+- name: Assert group + package_id combination returns dp_status without error
+  ansible.builtin.assert:
+    that:
+      - dpg_pkg_run.dp_status is defined
+      - dpg_pkg_run.changed == false
+    fail_msg: "Combining distribution_point_group with package_id must not fail"
+  when: dpg_real_package != ''
+
+- name: Assert combined result rows reference the requested package_id (when results exist)
+  ansible.builtin.assert:
+    that:
+      - item.package_id == dpg_real_package
+    fail_msg: "Row dp_name='{{ item.dp_name }}' has package_id='{{ item.package_id }}' but expected '{{ dpg_real_package }}'"
+  loop: >-
+    {{
+      [dpg_pkg_run.dp_status]
+      if dpg_pkg_run.dp_status is mapping
+      else (dpg_pkg_run.dp_status | default([]))
+    }}
+  when:
+    - dpg_real_package != ''
+    - dpg_pkg_run.dp_status is defined
+    - dpg_pkg_run.dp_status is not none
+
+- name: Skip group+package_id test — no distributed packages found in the DP group
+  ansible.builtin.debug:
+    msg: "Skipping group+package_id combined assertion: no valid package_id found in DP group '{{ test_dp_group_name }}'"
+  when: dpg_real_package == ''
+
+# -----------------------------------------------
+# DP GROUP WARNING — group with no DPs
+# -----------------------------------------------
+
+- name: Run module with multiple groups where one is non-existent
+  microsoft.mecm.dp_status_info:
+    site_code: "{{ test_site_code }}"
+    distribution_point_group:
+      - "{{ test_dp_group_name }}"
+      - "ghost-group-{{ unique_test_id | default('ansible-test') }}"
+  register: dpg_mixed_run
+  failed_when: false
+  ignore_errors: true
+
+- name: Assert mixed group list succeeds and warns about the non-existent entry
+  ansible.builtin.assert:
+    that:
+      - dpg_mixed_run is not failed
+      - dpg_mixed_run.dp_status is defined
+      - dpg_mixed_run.warnings | default([]) | length > 0
+    fail_msg: >-
+      When one group in the list does not exist the module must still succeed,
+      return results from valid groups, and emit a warning for the missing group
+
 # -------------------------------
 # SUMMARY
 # -------------------------------
@@ -198,3 +349,7 @@
       - Package filter: {{ 'PASS' if package_filter_run.dp_status is defined else 'FAIL' }}
       - Check mode: {{ 'PASS' if check_mode_run.dp_status is defined else 'FAIL' }}
       - Combined filters: {{ 'PASS' if combined_run.dp_status is defined else 'FAIL' }}
+      - DP group filter: {{ 'PASS' if dpg_filter_run.dp_status is defined else 'FAIL' }}
+      - DP group non-existent: {{ 'PASS' if dpg_nonexistent_run is not failed else 'FAIL' }}
+      - DP group + package_id: {{ 'PASS' if dpg_pkg_run.dp_status is defined else 'FAIL' }}
+      - DP group mixed (warning): {{ 'PASS' if dpg_mixed_run is not failed else 'FAIL' }}

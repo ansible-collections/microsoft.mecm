@@ -10,6 +10,9 @@ test_site_code: "ECO"
 # Distribution Point Configuration - will be set dynamically in tasks
 test_distribution_point: ""
 
+# Distribution Point Group - override per environment if needed
+test_dp_group: "primary"
+
 # Package Configuration - using actually distributed package
 test_package_id: ECO00003
 

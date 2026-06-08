@@ -6,9 +6,11 @@ DOCUMENTATION:
   module: dp_status_info
   short_description: Retrieve distribution point status information from SCCM
   description:
-    - Retrieves distribution point status information for packages and content from SCCM using Get-CMDistributionStatus.
-    - Returns detailed package distribution data with authentic SCCM field names (PackageID, SoftwareName, etc.).
-    - Supports filtering by specific distribution points or package IDs for targeted monitoring.
+    - Retrieves distribution point status information for packages and content from SCCM.
+    - When no DP filter is given, uses C(Get-CMDistributionStatus) to return aggregate per-package status.
+    - When C(distribution_point) or C(distribution_point_group) is given, queries
+      C(SMS_PackageStatusDistPointsSummarizer) via CIM for real per-DP rows, which works correctly
+      for content distributed via DP groups.
     - Read-only module that provides visibility into SCCM distribution infrastructure health.
   version_added: "0.1.0"
   extends_documentation_fragment:
@@ -16,6 +18,7 @@ DOCUMENTATION:
   requirements:
     - SCCM PowerShell module (ConfigurationManager)
     - Administrative access to SCCM site server
+    - Local CIM access on the site server (C(SMS_PackageStatusDistPointsSummarizer) is queried without C(-ComputerName) to avoid WinRM double-hop)
   options:
     computer_name:
       description:
@@ -25,25 +28,40 @@ DOCUMENTATION:
       type: str
     distribution_point:
       description:
-        - Specific distribution point name(s) to query.
-        - If not specified, all distribution points will be queried.
+        - Specific distribution point FQDN(s) to filter results by.
+        - Uses C(SMS_PackageStatusDistPointsSummarizer) via CIM and matches rows by C(ServerNALPath).
+        - Provides real per-DP rows including for content distributed via DP groups.
+        - When omitted, C(Get-CMDistributionStatus) is used and C(dp_name) will be empty in results.
+      required: false
+      type: list
+      elements: str
+    distribution_point_group:
+      description:
+        - One or more DP Group names to filter results by.
+        - Resolves each group to its member DPs via C(Get-CMDistributionPoint -DistributionPointGroupName),
+          then queries C(SMS_PackageStatusDistPointsSummarizer) via CIM for per-DP rows.
+        - Takes precedence over C(distribution_point) when both are provided.
       required: false
       type: list
       elements: str
     package_id:
       description:
-        - Specific package ID to query distribution status for.
-        - If not specified, all packages will be queried for the target distribution points.
+        - Specific package ID to filter results by.
+        - Works with all query modes.
+        - When omitted alongside any DP filter, all packages on the matching DPs are returned.
+        - When omitted with no DP filter at all, all distribution statuses site-wide are returned.
       required: false
       type: str
   notes:
     - This module requires the SCCM Console to be installed on the target machine.
-    - The module connects to the SCCM site server using PowerShell cmdlets.
     - This is an info module that does not make any changes to the system.
     - >-
-      "B(Performance): In large environments with thousands of packages and many distribution points,
-      query time may be significant. Consider using C(distribution_point) and C(package_id) filters to limit scope."
-    - "B(Server validation): The module validates that the connected SCCM site matches the specified C(computer_name) parameter to ensure consistency."
+      B(Per-DP vs aggregate): C(Get-CMDistributionStatus) returns one aggregate row per package
+      (not per DP). Use C(distribution_point) or C(distribution_point_group) to get real per-DP rows
+      via C(SMS_PackageStatusDistPointsSummarizer).
+    - >-
+      B(Performance): In large environments, omitting all filters returns every distribution record
+      site-wide. Use C(package_id) or a DP filter to limit scope.
   author:
     - "Ansible Community (@ansible-community)"
 
@@ -101,7 +119,9 @@ RETURN:
     elements: dict
     contains:
       dp_name:
-        description: Distribution point server name
+        description:
+          - Distribution point server name.
+          - Empty string when C(distribution_point) is not specified (query is performed without a DP object).
         type: str
         returned: always
         sample: "DP-NYC-01.domain.com"
@@ -116,23 +136,50 @@ RETURN:
         returned: always
         sample: "Microsoft Corporation Configuration Manager Client Package"
       state:
-        description: Distribution state based on SCCM status counters
+        description:
+          - Distribution state derived from SCCM status counters.
+          - C(No Content) is only returned when a specific C(distribution_point) is queried and no status record exists for it.
         type: str
         returned: always
         sample: "Success"
         choices: ["Success", "Failed", "InProgress", "Unknown", "No Content"]
       error:
-        description: Error information if available
+        description: Error information if available.
         type: str
         returned: always
         sample: ""
       last_update_date:
-        description: Last update date from SCCM in /Date(timestamp)/ format
+        description: Last update date from SCCM in /Date(timestamp)/ format.
         type: str
         returned: always
         sample: "/Date(1763863322367)/"
       source_size:
-        description: Content source size in KB from SCCM
+        description: Content source size in KB from SCCM.
         type: int
         returned: always
         sample: 614061
+      number_success:
+        description: Number of distribution points that successfully received the content.
+        type: int
+        returned: when C(distribution_point) is not specified
+        sample: 1
+      number_errors:
+        description: Number of distribution points that reported an error.
+        type: int
+        returned: when C(distribution_point) is not specified
+        sample: 0
+      number_in_progress:
+        description: Number of distribution points where distribution is still in progress.
+        type: int
+        returned: when C(distribution_point) is not specified
+        sample: 0
+      number_unknown:
+        description: Number of distribution points with unknown status.
+        type: int
+        returned: when C(distribution_point) is not specified
+        sample: 0
+      targeted:
+        description: Total number of distribution points the content is targeted to.
+        type: int
+        returned: when C(distribution_point) is not specified
+        sample: 1
