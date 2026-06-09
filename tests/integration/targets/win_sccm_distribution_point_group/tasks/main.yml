@@ -1,0 +1,476 @@
+---
+# Integration tests for distribution_point_group and distribution_point_group_info modules
+
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_group_name: "{{ unique_test_id }}-dpg"
+    test_group_renamed: "{{ unique_test_id }}-dpg-renamed"
+
+- name: Test distribution point group lifecycle
+  block:
+    # -----------------------------------------------
+    # CREATE - check mode
+    # -----------------------------------------------
+    - name: Create DP group - check mode
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        description: "Integration test DP group"
+        distribution_points:
+          - "{{ test_dp_name }}"
+        state: present
+      check_mode: true
+      register: _create_check
+
+    - name: Verify group does not exist after check mode create
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_create_check
+
+    - name: Assert check mode create reported change and made no real change
+      ansible.builtin.assert:
+        that:
+          - _create_check is changed
+          - _create_check.distribution_point_group.name == test_group_name
+          - _create_check.distribution_point_group.id == 'check_mode'
+          - _info_after_create_check.distribution_point_groups | length == 0
+
+    # -----------------------------------------------
+    # CREATE - actual
+    # -----------------------------------------------
+    - name: Create DP group
+      microsoft.mecm.distribution_point_group: &create_group
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        description: "Integration test DP group"
+        distribution_points:
+          - "{{ test_dp_name }}"
+        state: present
+      register: _create_group
+
+    # -----------------------------------------------
+    # CREATE - idempotency
+    # -----------------------------------------------
+    - name: Create DP group - idempotency
+      microsoft.mecm.distribution_point_group: *create_group
+      register: _create_group_idempotent
+
+    - name: Get DP group info after creation
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_create
+
+    - name: Assert creation, idempotency, and info values
+      ansible.builtin.assert:
+        that:
+          - _create_group is changed
+          - _create_group_idempotent is not changed
+          - _info_after_create.distribution_point_groups | length == 1
+          - _info_after_create.distribution_point_groups[0].name == test_group_name
+          - _info_after_create.distribution_point_groups[0].description == "Integration test DP group"
+          - _info_after_create.distribution_point_groups[0].distribution_points | map('lower') | list
+            is superset([test_dp_name | lower])
+
+    # -----------------------------------------------
+    # UPDATE description - check mode
+    # -----------------------------------------------
+    - name: Update DP group description - check mode
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        description: "Updated description"
+      check_mode: true
+      register: _update_desc_check
+
+    - name: Get DP group info after check mode description update
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_desc_check
+
+    - name: Assert check mode description update made no real change
+      ansible.builtin.assert:
+        that:
+          - _update_desc_check is changed
+          - _info_after_desc_check.distribution_point_groups[0].description == "Integration test DP group"
+
+    # -----------------------------------------------
+    # UPDATE description - actual + idempotency
+    # -----------------------------------------------
+    - name: Update DP group description
+      microsoft.mecm.distribution_point_group: &update_desc
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        description: "Updated description"
+      register: _update_desc
+
+    - name: Update DP group description - idempotency
+      microsoft.mecm.distribution_point_group: *update_desc
+      register: _update_desc_idempotent
+
+    - name: Get DP group info after description update
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_desc_update
+
+    - name: Assert description updated correctly
+      ansible.builtin.assert:
+        that:
+          - _update_desc is changed
+          - _update_desc_idempotent is not changed
+          - _info_after_desc_update.distribution_point_groups[0].description == "Updated description"
+
+    # -----------------------------------------------
+    # UPDATE distribution_points - check mode
+    # -----------------------------------------------
+    - name: Update DP group members - check mode (remove DP)
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        distribution_points: []
+      check_mode: true
+      register: _update_dps_check
+
+    - name: Get DP group info after check mode DP update
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_dps_check
+
+    - name: Assert check mode DP update made no real change
+      ansible.builtin.assert:
+        that:
+          - _update_dps_check is changed
+          - _info_after_dps_check.distribution_point_groups[0].distribution_points | length == 1
+
+    # -----------------------------------------------
+    # UPDATE distribution_points - remove DP + idempotency
+    # -----------------------------------------------
+    - name: Update DP group members - remove all DPs
+      microsoft.mecm.distribution_point_group: &update_dps_empty
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        distribution_points: []
+      register: _update_dps_empty
+
+    - name: Update DP group members - remove all DPs idempotency
+      microsoft.mecm.distribution_point_group: *update_dps_empty
+      register: _update_dps_empty_idempotent
+
+    - name: Get DP group info after DP removal
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_dps_empty
+
+    - name: Assert DP removed and idempotent
+      ansible.builtin.assert:
+        that:
+          - _update_dps_empty is changed
+          - _update_dps_empty_idempotent is not changed
+          - _info_after_dps_empty.distribution_point_groups[0].distribution_points | length == 0
+
+    # -----------------------------------------------
+    # UPDATE distribution_points - re-add DP
+    # -----------------------------------------------
+    - name: Update DP group members - re-add DP
+      microsoft.mecm.distribution_point_group: &update_dps_readd
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        distribution_points:
+          - "{{ test_dp_name }}"
+      register: _update_dps_readd
+
+    - name: Update DP group members - re-add DP idempotency
+      microsoft.mecm.distribution_point_group: *update_dps_readd
+      register: _update_dps_readd_idempotent
+
+    - name: Get DP group info after DP re-add
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_dps_readd
+
+    - name: Assert DP re-added and idempotent
+      ansible.builtin.assert:
+        that:
+          - _update_dps_readd is changed
+          - _update_dps_readd_idempotent is not changed
+          - _info_after_dps_readd.distribution_point_groups[0].distribution_points | map('lower') | list
+            is superset([test_dp_name | lower])
+
+    # -----------------------------------------------
+    # UPDATE distribution_points - swap to a different DP
+    # -----------------------------------------------
+    - name: Update DP group members - swap to second DP
+      microsoft.mecm.distribution_point_group: &update_dps_swap
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        distribution_points:
+          - "{{ test_dp_name_2 }}"
+      register: _update_dps_swap
+
+    - name: Update DP group members - swap to second DP idempotency
+      microsoft.mecm.distribution_point_group: *update_dps_swap
+      register: _update_dps_swap_idempotent
+
+    - name: Get DP group info after DP swap
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_dps_swap
+
+    - name: Assert DP swapped correctly and idempotent
+      ansible.builtin.assert:
+        that:
+          - _update_dps_swap is changed
+          - _update_dps_swap_idempotent is not changed
+          - _info_after_dps_swap.distribution_point_groups[0].distribution_points | map('lower') | list
+            is superset([test_dp_name_2 | lower])
+          - _info_after_dps_swap.distribution_point_groups[0].distribution_points | map('lower') | list
+            is not superset([test_dp_name | lower])
+
+    # -----------------------------------------------
+    # UPDATE distribution_points - both DPs together
+    # -----------------------------------------------
+    - name: Update DP group members - add both DPs
+      microsoft.mecm.distribution_point_group: &update_dps_both
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        distribution_points:
+          - "{{ test_dp_name }}"
+          - "{{ test_dp_name_2 }}"
+      register: _update_dps_both
+
+    - name: Update DP group members - both DPs idempotency
+      microsoft.mecm.distribution_point_group: *update_dps_both
+      register: _update_dps_both_idempotent
+
+    - name: Get DP group info after adding both DPs
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_dps_both
+
+    - name: Assert both DPs present and idempotent
+      ansible.builtin.assert:
+        that:
+          - _update_dps_both is changed
+          - _update_dps_both_idempotent is not changed
+          - _info_after_dps_both.distribution_point_groups[0].distribution_points | length == 2
+          - _info_after_dps_both.distribution_point_groups[0].distribution_points | map('lower') | list
+            is superset([test_dp_name | lower, test_dp_name_2 | lower])
+
+    # -----------------------------------------------
+    # RENAME - check mode
+    # -----------------------------------------------
+    - name: Rename DP group - check mode
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        new_name: "{{ test_group_renamed }}"
+      check_mode: true
+      register: _rename_check
+
+    - name: Verify original group name still exists after check mode rename
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_after_rename_check
+
+    - name: Assert check mode rename made no real change
+      ansible.builtin.assert:
+        that:
+          - _rename_check is changed
+          - _rename_check.distribution_point_group.name == test_group_renamed
+          - _info_after_rename_check.distribution_point_groups | length == 1
+          - _info_after_rename_check.distribution_point_groups[0].name == test_group_name
+
+    # -----------------------------------------------
+    # RENAME - actual + idempotency
+    # -----------------------------------------------
+    - name: Rename DP group
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        new_name: "{{ test_group_renamed }}"
+      register: _rename
+
+    - name: Rename DP group - idempotency (name is now the new name)
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_renamed }}"
+      register: _rename_idempotent
+
+    - name: Get DP group info after rename
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_renamed }}"
+      register: _info_after_rename
+
+    - name: Verify old name no longer exists
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+      register: _info_old_name_after_rename
+
+    - name: Assert rename applied correctly
+      ansible.builtin.assert:
+        that:
+          - _rename is changed
+          - _rename_idempotent is not changed
+          - _info_after_rename.distribution_point_groups | length == 1
+          - _info_after_rename.distribution_point_groups[0].name == test_group_renamed
+          - _info_old_name_after_rename.distribution_point_groups | length == 0
+
+    # -----------------------------------------------
+    # RENAME non-existent group - should fail
+    # -----------------------------------------------
+    - name: Rename a non-existent group - should fail
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}-nonexistent"
+        new_name: "{{ test_group_name }}-newname"
+      register: _rename_nonexistent
+      ignore_errors: true
+
+    - name: Assert rename of non-existent group fails with clear message
+      ansible.builtin.assert:
+        that:
+          - _rename_nonexistent is failed
+          - "'no group exists with the original name' in _rename_nonexistent.msg"
+
+    # -----------------------------------------------
+    # Create a second group to ensure INFO all-groups returns multiple results
+    # -----------------------------------------------
+    - name: Create second DP group for INFO test
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}-info-extra"
+        description: "Extra group for INFO all-groups test"
+        state: present
+      register: _create_extra_group
+
+    # -----------------------------------------------
+    # INFO - single group by name
+    # -----------------------------------------------
+    - name: Get single DP group by name (uses renamed name)
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_renamed }}"
+      register: _info_single_group
+
+    - name: Assert single group info returns correct group with expected fields
+      ansible.builtin.assert:
+        that:
+          - _info_single_group.distribution_point_groups | length == 1
+          - _info_single_group.distribution_point_groups[0].name == test_group_renamed
+          - _info_single_group.distribution_point_groups[0].description is defined
+          - _info_single_group.distribution_point_groups[0].id is defined
+          - _info_single_group.distribution_point_groups[0].member_count is defined
+          - _info_single_group.distribution_point_groups[0].distribution_points is defined
+
+    - name: Get info for a non-existent group - should warn and return empty list
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}-nonexistent"
+      register: _info_nonexistent_group
+
+    - name: Assert non-existent group returns empty list with a warning
+      ansible.builtin.assert:
+        that:
+          - _info_nonexistent_group.distribution_point_groups | length == 0
+          - _info_nonexistent_group.warnings | length > 0
+
+    # -----------------------------------------------
+    # INFO - all groups
+    # -----------------------------------------------
+    - name: Get all DP groups
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+      register: _info_all_groups
+
+    - name: Assert all groups list contains the renamed test group and at least 2 entries
+      ansible.builtin.assert:
+        that:
+          - _info_all_groups.distribution_point_groups | length >= 2
+          - _info_all_groups.distribution_point_groups | selectattr('name', 'equalto', test_group_renamed) | list | length == 1
+          - _info_all_groups.distribution_point_groups | selectattr('name', 'equalto', test_group_name ~ '-info-extra') | list | length == 1
+
+    # -----------------------------------------------
+    # DELETE - check mode
+    # -----------------------------------------------
+    - name: Delete DP group - check mode
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_renamed }}"
+        state: absent
+      check_mode: true
+      register: _delete_check
+
+    - name: Verify group still exists after check mode delete
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_renamed }}"
+      register: _info_after_delete_check
+
+    - name: Assert check mode delete made no real change
+      ansible.builtin.assert:
+        that:
+          - _delete_check is changed
+          - _info_after_delete_check.distribution_point_groups | length == 1
+
+    # -----------------------------------------------
+    # DELETE - actual
+    # -----------------------------------------------
+    - name: Delete DP group
+      microsoft.mecm.distribution_point_group: &delete_group
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_renamed }}"
+        state: absent
+      register: _delete_group
+
+    # -----------------------------------------------
+    # DELETE - idempotency
+    # -----------------------------------------------
+    - name: Delete DP group - idempotency
+      microsoft.mecm.distribution_point_group: *delete_group
+      register: _delete_group_idempotent
+
+    - name: Verify group no longer exists
+      microsoft.mecm.distribution_point_group_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_renamed }}"
+      register: _info_after_delete
+
+    - name: Assert delete and idempotency
+      ansible.builtin.assert:
+        that:
+          - _delete_group is changed
+          - _delete_group_idempotent is not changed
+          - _info_after_delete.distribution_point_groups | length == 0
+
+  always:
+    - name: Cleanup - ensure test group (original name) is removed
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - ensure test group (renamed) is removed
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_renamed }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - ensure extra INFO test group is removed
+      microsoft.mecm.distribution_point_group:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_group_name }}-info-extra"
+        state: absent
+      ignore_errors: true

@@ -1,0 +1,126 @@
+---
+# Copyright: (c) 2025, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: distribution_point_group
+  short_description: Create, update, or delete a Distribution Point Group in MECM
+  description:
+    - Creates, updates, or removes a Distribution Point Group in a Configuration Manager site.
+    - Manages group membership by adding or removing distribution points to reach the desired state.
+    - Uses C(New-CMDistributionPointGroup), C(Set-CMDistributionPointGroup),
+      C(Remove-CMDistributionPointGroup), C(Add-CMDistributionPointToGroup), and
+      C(Remove-CMDistributionPointFromGroup) cmdlets.
+  version_added: "1.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+      type: str
+      required: true
+    name:
+      description:
+        - The name of the distribution point group.
+        - Used to look up the group for idempotency checks.
+      type: str
+      required: true
+    new_name:
+      description:
+        - Rename a group to this value.
+        - Only applied when C(state=present) and the group "name" already exists.
+        - If 'new_name' is used but the group 'name' does not exist, a failure is raised "Cannot rename DP group".
+      type: str
+      required: false
+    description:
+      description:
+        - An optional description for the distribution point group.
+      type: str
+      required: false
+    distribution_points:
+      description:
+        - List of distribution point FQDNs that should be members of the group.
+        - The module reconciles the current membership to match this list exactly,
+          adding missing DPs and removing extra ones.
+        - "Passing an empty list (C(distribution_points: [])) removes all existing distribution points from the group."
+        - Comparison is case-insensitive.
+        - When omitted, existing membership is left unchanged.
+      type: list
+      elements: str
+      required: false
+    state:
+      description:
+        - Whether the group should be present or absent.
+      type: str
+      choices:
+        - present
+        - absent
+      default: present
+  author:
+    - "Ansible Project (@ansible)"
+
+EXAMPLES: |
+  - name: Create a distribution point group
+    microsoft.mecm.distribution_point_group:
+      site_code: "ECO"
+      name: "DpgDept01"
+      description: "Western region"
+      distribution_points:
+        - "WIN-UE71298AH9B.ECO.ANSIBLE.COM"
+      state: present
+
+  - name: Add a second DP to an existing group
+    microsoft.mecm.distribution_point_group:
+      site_code: "ECO"
+      name: "DpgDept01"
+      distribution_points:
+        - "WIN-UE71298AH9B.ECO.ANSIBLE.COM"
+        - "DP-NYC-02.ECO.ANSIBLE.COM"
+
+  - name: Rename a group and update its description
+    microsoft.mecm.distribution_point_group:
+      site_code: "ECO"
+      name: "DpgDept01"
+      new_name: "DpgWestRegion"
+      description: "All western region DPs"
+
+  - name: Remove a distribution point group
+    microsoft.mecm.distribution_point_group:
+      site_code: "ECO"
+      name: "DpgDept01"
+      state: absent
+
+RETURN:
+  distribution_point_group:
+    description: State of the distribution point group after the operation.
+    returned: always
+    type: dict
+    contains:
+      name:
+        description: Name of the distribution point group.
+        type: str
+        returned: always
+        sample: "DpgDept01"
+      id:
+        description:
+          - GUID of the group.
+          - Set to C(check_mode) when the group is being created in check mode.
+        type: str
+        returned: always
+        sample: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      description:
+        description: Description of the group.
+        type: str
+        returned: always
+        sample: "Western region"
+      distribution_points:
+        description: List of distribution point FQDNs that are members of the group.
+        type: list
+        elements: str
+        returned: always
+        sample:
+          - "WIN-UE71298AH9B.ECO.ANSIBLE.COM"

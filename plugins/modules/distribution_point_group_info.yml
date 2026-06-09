@@ -1,0 +1,83 @@
+---
+# Copyright: (c) 2025, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: distribution_point_group_info
+  short_description: Retrieve Distribution Point Group information from MECM
+  description:
+    - Returns information about one or all Distribution Point Groups in a Configuration Manager site.
+    - For each group, the list of member distribution point FQDNs is included.
+    - Uses C(Get-CMDistributionPointGroup) and C(Get-CMDistributionPoint -DistributionPointGroupName).
+  version_added: "1.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+      type: str
+      required: true
+    name:
+      description:
+        - Name of a specific distribution point group to retrieve.
+        - When omitted, all groups are returned.
+        - A warning is emitted if the specified group does not exist.
+      type: str
+      required: false
+  author:
+    - "Ansible Project (@ansible)"
+
+EXAMPLES: |
+  - name: Get all distribution point groups
+    microsoft.mecm.distribution_point_group_info:
+      site_code: "ECO"
+    register: all_groups
+
+  - name: Get a specific distribution point group
+    microsoft.mecm.distribution_point_group_info:
+      site_code: "ECO"
+      name: "primary"
+    register: group_info
+
+  - name: List member DPs of a group
+    ansible.builtin.debug:
+      msg: "{{ group_info.distribution_point_groups[0].distribution_points }}"
+
+RETURN:
+  distribution_point_groups:
+    description: List of distribution point groups.
+    returned: always
+    type: list
+    elements: dict
+    contains:
+      name:
+        description: Name of the distribution point group.
+        type: str
+        returned: always
+        sample: "primary"
+      id:
+        description: GUID of the group.
+        type: str
+        returned: always
+        sample: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      description:
+        description: Description of the group.
+        type: str
+        returned: always
+        sample: "Western region"
+      member_count:
+        description: Number of distribution points in the group as reported by MECM.
+        type: int
+        returned: always
+        sample: 2
+      distribution_points:
+        description: List of distribution point FQDNs that are members of the group.
+        type: list
+        elements: str
+        returned: always
+        sample:
+          - "WIN-UE71298AH9B.ECO.ANSIBLE.COM"
