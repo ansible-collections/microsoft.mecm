@@ -1,0 +1,320 @@
+---
+# Integration tests for device_collection and device_collection_info modules
+
+- name: Set test variables
+  ansible.builtin.set_fact:
+    test_dc_name: "{{ unique_test_id }}-dc"
+    test_dc_name_periodic: "{{ unique_test_id }}-dc-periodic"
+
+- name: Test device collection lifecycle
+  block:
+    # -----------------------------------------------
+    # CREATE - check mode (manual refresh)
+    # -----------------------------------------------
+    - name: Create device collection - check mode
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        limiting_collection_name: "{{ test_limiting_collection }}"
+        state: present
+      check_mode: true
+      register: _create_check
+
+    - name: Verify collection does not exist after check mode create
+      microsoft.mecm.device_collection_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+      register: _info_after_create_check
+
+    - name: Assert check mode create reported change and made no real change
+      ansible.builtin.assert:
+        that:
+          - _create_check is changed
+          - _create_check.device_collection.name == test_dc_name
+          - _create_check.device_collection.collection_id == 'check_mode'
+          - _create_check.device_collection.limiting_collection_name == test_limiting_collection
+          - _create_check.device_collection.refresh_type == 'Manual'
+          - _info_after_create_check.device_collections | length == 0
+
+    # -----------------------------------------------
+    # CREATE - actual (manual refresh)
+    # -----------------------------------------------
+    - name: Create device collection
+      microsoft.mecm.device_collection: &create_dc
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        limiting_collection_name: "{{ test_limiting_collection }}"
+        state: present
+      register: _create_dc
+
+    - name: Assert device collection created
+      ansible.builtin.assert:
+        that:
+          - _create_dc is changed
+          - _create_dc.device_collection.name == test_dc_name
+          - _create_dc.device_collection.limiting_collection_name == test_limiting_collection
+          - _create_dc.device_collection.refresh_type == 'Manual'
+          - _create_dc.device_collection.collection_id != 'check_mode'
+          - not _create_dc.device_collection.is_built_in
+
+    # -----------------------------------------------
+    # CREATE - idempotency
+    # -----------------------------------------------
+    - name: Create device collection - idempotency
+      microsoft.mecm.device_collection: *create_dc
+      register: _create_dc_idempotent
+
+    - name: Assert idempotency on create
+      ansible.builtin.assert:
+        that:
+          - _create_dc_idempotent is not changed
+
+    # -----------------------------------------------
+    # INFO - query specific collection
+    # -----------------------------------------------
+    - name: Get specific device collection info
+      microsoft.mecm.device_collection_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+      register: _info_single
+
+    - name: Assert single collection info
+      ansible.builtin.assert:
+        that:
+          - _info_single.device_collections | length == 1
+          - _info_single.device_collections[0].name == test_dc_name
+          - _info_single.device_collections[0].limiting_collection_name == test_limiting_collection
+          - _info_single.device_collections[0].refresh_type == 'Manual'
+          - not _info_single.device_collections[0].is_built_in
+
+    # -----------------------------------------------
+    # INFO - query all collections
+    # -----------------------------------------------
+    - name: Get all device collections
+      microsoft.mecm.device_collection_info:
+        site_code: "{{ test_site_code }}"
+      register: _info_all
+
+    - name: Assert all collections returned and test collection is present
+      ansible.builtin.assert:
+        that:
+          - _info_all.device_collections | length >= 1
+          - _info_all.device_collections | selectattr('name', 'equalto', test_dc_name) | list | length == 1
+
+    # -----------------------------------------------
+    # UPDATE refresh_type - check mode
+    # -----------------------------------------------
+    - name: Change refresh_type to Periodic - check mode
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        limiting_collection_name: "{{ test_limiting_collection }}"
+        refresh_type: Periodic
+        schedule_recur_interval: Days
+        schedule_recur_count: 1
+      check_mode: true
+      register: _update_rt_check
+
+    - name: Get info after check mode refresh_type update
+      microsoft.mecm.device_collection_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+      register: _info_after_rt_check
+
+    - name: Assert check mode refresh_type change made no real change
+      ansible.builtin.assert:
+        that:
+          - _update_rt_check is changed
+          - _update_rt_check.device_collection.refresh_type == 'Periodic'
+          - _info_after_rt_check.device_collections[0].refresh_type == 'Manual'
+
+    # -----------------------------------------------
+    # UPDATE refresh_type - actual
+    # -----------------------------------------------
+    - name: Change refresh_type to Periodic with daily schedule
+      microsoft.mecm.device_collection: &update_rt_periodic
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        limiting_collection_name: "{{ test_limiting_collection }}"
+        refresh_type: Periodic
+        schedule_recur_interval: Days
+        schedule_recur_count: 1
+      register: _update_rt
+
+    - name: Get info after refresh_type update
+      microsoft.mecm.device_collection_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+      register: _info_after_rt
+
+    - name: Assert refresh_type updated to Periodic
+      ansible.builtin.assert:
+        that:
+          - _update_rt is changed
+          - _info_after_rt.device_collections[0].refresh_type == 'Periodic'
+
+    # -----------------------------------------------
+    # UPDATE refresh_type - idempotency
+    # -----------------------------------------------
+    - name: Change refresh_type to Periodic - idempotency
+      microsoft.mecm.device_collection: *update_rt_periodic
+      register: _update_rt_idempotent
+
+    - name: Assert idempotency on refresh_type update
+      ansible.builtin.assert:
+        that:
+          - _update_rt_idempotent is not changed
+
+    # -----------------------------------------------
+    # UPDATE refresh_type to Both
+    # -----------------------------------------------
+    - name: Change refresh_type to Both with schedule
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        limiting_collection_name: "{{ test_limiting_collection }}"
+        refresh_type: Both
+        schedule_recur_interval: Days
+        schedule_recur_count: 1
+      register: _update_rt_both
+
+    - name: Assert refresh_type updated to Both
+      ansible.builtin.assert:
+        that:
+          - _update_rt_both is changed
+
+    - name: Verify refresh_type is Both
+      microsoft.mecm.device_collection_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+      register: _info_after_both
+
+    - name: Assert collection refresh_type is Both
+      ansible.builtin.assert:
+        that:
+          - _info_after_both.device_collections[0].refresh_type == 'Both'
+
+    # -----------------------------------------------
+    # CREATE collection with periodic schedule
+    # -----------------------------------------------
+    - name: Create device collection with periodic refresh and schedule
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name_periodic }}"
+        limiting_collection_name: "{{ test_limiting_collection }}"
+        refresh_type: Periodic
+        schedule_recur_interval: Days
+        schedule_recur_count: 1
+        state: present
+      register: _create_periodic
+
+    - name: Assert periodic collection created
+      ansible.builtin.assert:
+        that:
+          - _create_periodic is changed
+          - _create_periodic.device_collection.refresh_type == 'Periodic'
+
+    # -----------------------------------------------
+    # FAIL - limiting collection mismatch
+    # -----------------------------------------------
+    - name: Attempt to change limiting collection (should fail)
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        limiting_collection_name: "All Desktop and Server Clients"
+        state: present
+      register: _limiting_fail
+      ignore_errors: true
+
+    - name: Assert limiting collection change failed
+      ansible.builtin.assert:
+        that:
+          - _limiting_fail is failed
+          - "'Cannot change limiting_collection_name' in _limiting_fail.msg"
+
+    # -----------------------------------------------
+    # INFO - query non-existent collection (warn)
+    # -----------------------------------------------
+    - name: Query non-existent device collection
+      microsoft.mecm.device_collection_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ unique_test_id }}-does-not-exist"
+      register: _info_missing
+
+    - name: Assert empty result for missing collection
+      ansible.builtin.assert:
+        that:
+          - _info_missing.device_collections | length == 0
+          - _info_missing.warnings | length > 0
+
+    # -----------------------------------------------
+    # REMOVE - check mode
+    # -----------------------------------------------
+    - name: Remove device collection - check mode
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        state: absent
+      check_mode: true
+      register: _remove_check
+
+    - name: Verify collection still exists after check mode remove
+      microsoft.mecm.device_collection_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+      register: _info_after_remove_check
+
+    - name: Assert check mode remove reported change but made no real change
+      ansible.builtin.assert:
+        that:
+          - _remove_check is changed
+          - _info_after_remove_check.device_collections | length == 1
+
+    # -----------------------------------------------
+    # REMOVE - actual
+    # -----------------------------------------------
+    - name: Remove device collection
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        state: absent
+      register: _remove_dc
+
+    - name: Assert device collection removed
+      ansible.builtin.assert:
+        that:
+          - _remove_dc is changed
+          - _remove_dc.device_collection.name == test_dc_name
+
+    # -----------------------------------------------
+    # REMOVE - idempotency (already absent)
+    # -----------------------------------------------
+    - name: Remove device collection - idempotency (already absent)
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        state: absent
+      register: _remove_dc_idempotent
+
+    - name: Assert no change when removing an already absent collection
+      ansible.builtin.assert:
+        that:
+          - _remove_dc_idempotent is not changed
+
+  always:
+    # -----------------------------------------------
+    # CLEANUP - ensure test collections are removed
+    # -----------------------------------------------
+    - name: Cleanup - remove test collection (main)
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name }}"
+        state: absent
+      ignore_errors: true
+
+    - name: Cleanup - remove test collection (periodic)
+      microsoft.mecm.device_collection:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_dc_name_periodic }}"
+        state: absent
+      ignore_errors: true
