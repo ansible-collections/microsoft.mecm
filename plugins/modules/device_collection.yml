@@ -1,0 +1,175 @@
+---
+# Copyright: (c) 2026, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: device_collection
+  short_description: Create, update, or delete a Device Collection in MECM
+  description:
+    - Creates, updates, or removes a Device Collection in a Configuration Manager site.
+    - Uses C(New-CMDeviceCollection), C(Set-CMCollection), and C(Remove-CMDeviceCollection) cmdlets.
+    - When C(refresh_type) is C(Periodic) or C(Both), a refresh schedule can be defined using
+      C(schedule_recur_interval), C(schedule_recur_count), and C(schedule_start). All three must
+      be provided together or omitted entirely. The schedule object is built with C(New-CMSchedule).
+  version_added: "1.2.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+      type: str
+      required: true
+    name:
+      description:
+        - The name of the device collection.
+        - Used to look up the collection for idempotency checks.
+      type: str
+      required: true
+    limiting_collection_name:
+      description:
+        - The name of the limiting collection that defines the scope of the device collection.
+        - Required when creating a new device collection (C(state=present) and the collection does not exist).
+        - Can be changed on an existing collection; the module will update it when the value differs.
+      type: str
+      required: false
+    refresh_type:
+      description:
+        - Specifies how MECM refreshes the collection membership.
+        - C(Manual) requires an administrator to manually trigger a refresh.
+        - C(Periodic) runs a full membership update on a schedule.
+        - C(Continuous) uses incremental updates triggered by resource discovery.
+        - C(Both) combines C(Periodic) full updates and C(Continuous) incremental updates.
+      type: str
+      choices:
+        - Manual
+        - Periodic
+        - Continuous
+        - Both
+      required: false
+    schedule_recur_interval:
+      description:
+        - The time unit for the schedule recurrence.
+        - Must be provided together with C(schedule_recur_count) and C(schedule_start).
+        - Only applied when C(refresh_type) is C(Periodic) or C(Both).
+      type: str
+      choices:
+        - Minutes
+        - Hours
+        - Days
+      required: false
+    schedule_recur_count:
+      description:
+        - The number of C(schedule_recur_interval) units between each recurrence.
+        - Must be provided together with C(schedule_recur_interval) and C(schedule_start).
+        - Only applied when C(refresh_type) is C(Periodic) or C(Both).
+      type: int
+      required: false
+    schedule_start:
+      description:
+        - The date and time of the first occurrence of the scheduled event.
+        - Accepts any date/time string parseable by PowerShell, e.g. C(2026-06-09 08:00).
+        - Must be provided together with C(schedule_recur_interval) and C(schedule_recur_count).
+        - Only applied when C(refresh_type) is C(Periodic) or C(Both).
+      type: str
+      required: false
+    state:
+      description:
+        - Whether the device collection should be present or absent.
+      type: str
+      choices:
+        - present
+        - absent
+      default: present
+  author:
+    - "Ansible Project (@ansible)"
+
+EXAMPLES: |
+  - name: Create a device collection with manual refresh
+    microsoft.mecm.device_collection:
+      site_code: "ECO"
+      name: "Windows 11"
+      limiting_collection_name: "All Systems"
+      state: present
+
+  - name: Create a device collection with a daily periodic schedule
+    microsoft.mecm.device_collection:
+      site_code: "ECO"
+      name: "Servers - Production"
+      limiting_collection_name: "All Systems"
+      refresh_type: Periodic
+      schedule_recur_interval: Days
+      schedule_recur_count: 1
+      schedule_start: "2026-06-10 06:00"
+      state: present
+
+  - name: Create a device collection refreshing every 2 hours
+    microsoft.mecm.device_collection:
+      site_code: "ECO"
+      name: "Workstations - Finance"
+      limiting_collection_name: "All Workstations"
+      refresh_type: Both
+      schedule_recur_interval: Hours
+      schedule_recur_count: 2
+      state: present
+
+  - name: Create a device collection with continuous incremental updates (no schedule needed)
+    microsoft.mecm.device_collection:
+      site_code: "ECO"
+      name: "Laptops"
+      limiting_collection_name: "All Systems"
+      refresh_type: Continuous
+      state: present
+
+  - name: Remove a device collection
+    microsoft.mecm.device_collection:
+      site_code: "ECO"
+      name: "Windows 11"
+      state: absent
+
+RETURN:
+  device_collection:
+    description: State of the device collection after the operation.
+    returned: always
+    type: dict
+    contains:
+      name:
+        description: Name of the device collection.
+        type: str
+        returned: always
+        sample: "Windows 11"
+      collection_id:
+        description:
+          - The unique ID of the device collection assigned by MECM.
+          - Set to C(check_mode) when the collection is being created in check mode.
+        type: str
+        returned: always
+        sample: "ECO00042"
+      limiting_collection_name:
+        description: Name of the limiting collection that scopes this collection.
+        type: str
+        returned: always
+        sample: "All Systems"
+      refresh_type:
+        description: The membership refresh type of the collection.
+        type: str
+        returned: always
+        sample: "Periodic"
+      member_count:
+        description: Number of devices currently in the collection.
+        type: int
+        returned: always
+        sample: 10
+      comment:
+        description: Optional description or comment for the collection.
+        type: str
+        returned: always
+        sample: "All Windows 11 devices"
+      is_built_in:
+        description: Whether the collection is a built-in MECM collection.
+        type: bool
+        returned: always
+        sample: false

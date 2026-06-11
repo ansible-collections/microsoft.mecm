@@ -1,0 +1,91 @@
+---
+# Copyright: (c) 2026, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: device_collection_info
+  short_description: Retrieve Device Collection information from MECM
+  description:
+    - Returns information about one or all Device Collections in a Configuration Manager site.
+    - Uses C(Get-CMDeviceCollection) cmdlet.
+    - When no C(name) is provided, all device collections are returned.
+  version_added: "1.2.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+      type: str
+      required: true
+    name:
+      description:
+        - Name of a specific device collection to retrieve.
+        - When omitted, all device collections are returned.
+        - A warning is emitted if the specified collection does not exist.
+      type: str
+      required: false
+  author:
+    - "Ansible Project (@ansible)"
+
+EXAMPLES: |
+  - name: Get all device collections
+    microsoft.mecm.device_collection_info:
+      site_code: "ECO"
+    register: all_collections
+
+  - name: Get a specific device collection
+    microsoft.mecm.device_collection_info:
+      site_code: "ECO"
+      name: "Windows 11"
+    register: dc_info
+
+  - name: Show member count for a collection
+    ansible.builtin.debug:
+      msg: "{{ dc_info.device_collections[0].member_count }} devices in collection"
+
+RETURN:
+  device_collections:
+    description: List of device collections matching the query.
+    returned: always
+    type: list
+    elements: dict
+    contains:
+      name:
+        description: Name of the device collection.
+        type: str
+        returned: always
+        sample: "Windows 11"
+      collection_id:
+        description: The unique ID assigned to the collection by MECM.
+        type: str
+        returned: always
+        sample: "ECO00042"
+      limiting_collection_name:
+        description: Name of the limiting collection that scopes this collection.
+        type: str
+        returned: always
+        sample: "All Systems"
+      refresh_type:
+        description: The membership refresh type of the collection.
+        type: str
+        returned: always
+        sample: "Periodic"
+      member_count:
+        description: Number of devices currently in the collection.
+        type: int
+        returned: always
+        sample: 10
+      comment:
+        description: Optional description or comment for the collection.
+        type: str
+        returned: always
+        sample: "All Windows 11 devices"
+      is_built_in:
+        description: Whether the collection is a built-in MECM collection.
+        type: bool
+        returned: always
+        sample: false
