@@ -1,0 +1,472 @@
+---
+# Copyright: (c) 2025, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: software_update_adr
+  short_description: Create, update, or delete a Software Update Auto Deployment Rule (ADR) in MECM
+  description:
+    - Creates, updates, or removes a Software Update Auto Deployment Rule (ADR) in a
+      Configuration Manager site.
+    - Uses C(New-CMSoftwareUpdateAutoDeploymentRule), C(Set-CMSoftwareUpdateAutoDeploymentRule),
+      and C(Remove-CMSoftwareUpdateAutoDeploymentRule) PowerShell cmdlets.
+    - The unique identifier for an ADR is its O(name). Lookup is always performed by name.
+    - For more information, see
+      U(https://learn.microsoft.com/en-us/powershell/module/configurationmanager/new-cmsoftwareupdateautodeploymentrule).
+  version_added: "1.3.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+      type: str
+      required: true
+    name:
+      description:
+        - The name of the Software Update Auto Deployment Rule.
+        - Used as the unique lookup key for idempotency.
+      type: str
+      required: true
+    state:
+      description:
+        - Whether the ADR should exist or be removed.
+        - V(present) creates the ADR if absent, or updates it needed changes are detected.
+        - V(absent) removes the ADR when found. Reports C(changed=false) when not found.
+      type: str
+      choices:
+        - present
+        - absent
+      default: present
+    collection_name:
+      description:
+        - The name of the target device collection for the ADR deployment.
+        - Required when creating a new ADR (O(state=present) and the ADR does not yet exist).
+        - The collection must already exist in MECM. The module fails with a clear error if the
+          collection cannot be found.
+        - Ignored when the ADR already exists; the collection of an existing ADR cannot
+          be changed via this module.
+      type: str
+      required: false
+    description:
+      description:
+        - An optional description for the ADR.
+        - When provided on an existing ADR, updated only if the current value differs.
+      type: str
+      required: false
+    enabled:
+      description:
+        - Whether to enable or disable the ADR.
+        - When omitted, the enabled state is not changed on an existing ADR.
+      type: bool
+      required: false
+    add_to_existing_software_update_group:
+      description:
+        - When V(true), the ADR adds updates to an existing software update group rather
+          than creating a new one.
+      type: bool
+      required: false
+    deployment_package_name:
+      description:
+        - The name of the deployment package to use for downloading software updates.
+        - When omitted, the ADR deploys without a package.
+      type: str
+      required: false
+    run_type:
+      description:
+        - Specifies when the ADR is evaluated.
+        - V(DoNotRunThisRuleAutomatically) disables automatic evaluation.
+        - V(RunTheRuleAfterAnySoftwareUpdatePointSynchronization) evaluates after each
+          SUP synchronisation.
+        - V(RunTheRuleOnSchedule) evaluates according to O(schedule).
+      type: str
+      choices:
+        - DoNotRunThisRuleAutomatically
+        - RunTheRuleAfterAnySoftwareUpdatePointSynchronization
+        - RunTheRuleOnSchedule
+      required: false
+    schedule:
+      description:
+        - Schedule definition used when O(run_type=RunTheRuleOnSchedule).
+        - Passed to C(New-CMSchedule) to build a schedule object.
+      type: dict
+      required: false
+      suboptions:
+        recur_count:
+          description:
+            - How often to repeat the schedule (used with O(schedule.recur_interval) or
+              O(schedule.day_of_week)).
+          type: int
+          default: 1
+        recur_interval:
+          description:
+            - The time unit for the recurrence interval.
+            - Mutually exclusive with O(schedule.day_of_week).
+          type: str
+          choices:
+            - Days
+            - Hours
+            - Minutes
+            - Months
+            - Weeks
+        day_of_week:
+          description:
+            - Day of the week for a weekly schedule.
+            - When provided, O(schedule.recur_interval) is ignored and a weekly schedule is used.
+          type: str
+          choices:
+            - Sunday
+            - Monday
+            - Tuesday
+            - Wednesday
+            - Thursday
+            - Friday
+            - Saturday
+        week_order:
+          description:
+            - Week of the month for a monthly-by-weekday schedule.
+            - Must be combined with O(schedule.day_of_week).
+          type: str
+          choices:
+            - First
+            - Second
+            - Third
+            - Fourth
+            - Last
+        start:
+          description:
+            - The start date and time for the schedule as a parseable date-time string.
+          type: str
+    update_classification:
+      description:
+        - List of update classification strings to include (e.g. C(Critical Updates),
+          C(Security Updates), C(Definition Updates)).
+      type: list
+      elements: str
+      required: false
+    product:
+      description:
+        - List of product names to filter updates by (e.g. C(Windows 10), C(Office 365)).
+      type: list
+      elements: str
+      required: false
+    severity:
+      description:
+        - List of severity levels to include.
+      type: list
+      elements: str
+      required: false
+    article_id:
+      description:
+        - List of KB article ID substrings to filter updates.
+      type: list
+      elements: str
+      required: false
+    title:
+      description:
+        - List of update title substrings to filter updates.
+      type: list
+      elements: str
+      required: false
+    available_time:
+      description:
+        - The number of time units after which the software update is available.
+        - Used together with O(available_time_unit).
+      type: int
+      required: false
+    available_time_unit:
+      description:
+        - The time unit for O(available_time).
+      type: str
+      choices:
+        - Days
+        - Hours
+        - Minutes
+        - Months
+        - Weeks
+      required: false
+    deadline_time:
+      description:
+        - The number of time units until the installation deadline.
+        - Used together with O(deadline_time_unit).
+      type: int
+      required: false
+    deadline_time_unit:
+      description:
+        - The time unit for O(deadline_time).
+      type: str
+      choices:
+        - Days
+        - Hours
+        - Minutes
+        - Months
+        - Weeks
+      required: false
+    allow_restart:
+      description:
+        - When V(true), allows computers to restart outside maintenance windows after
+          a software update installation.
+      type: bool
+      required: false
+    suppress_restart_server:
+      description:
+        - When V(true), suppresses the restart notification on servers.
+      type: bool
+      required: false
+    suppress_restart_workstation:
+      description:
+        - When V(true), suppresses the restart notification on workstations.
+      type: bool
+      required: false
+    allow_software_installation_outside_maintenance_window:
+      description:
+        - When V(true), allows software installation outside a maintenance window when
+          the installation deadline occurs outside the window.
+      type: bool
+      required: false
+    allow_use_metered_network:
+      description:
+        - When V(true), allows clients to download content over a metered network connection
+          after the deadline.
+      type: bool
+      required: false
+    download_from_microsoft_update:
+      description:
+        - When V(true), clients download updates directly from Microsoft Update if
+          unavailable from distribution points.
+      type: bool
+      required: false
+    use_branch_cache:
+      description:
+        - When V(true), enables Windows BranchCache for content delivery.
+      type: bool
+      required: false
+    user_notification:
+      description:
+        - Specifies how end-user notifications are displayed.
+        - V(DisplayAll) shows all notifications including restart.
+        - V(DisplaySoftwareCenterOnly) shows notifications only in Software Center.
+        - V(HideAll) suppresses all notifications.
+      type: str
+      choices:
+        - DisplayAll
+        - DisplaySoftwareCenterOnly
+        - HideAll
+      required: false
+    verbose_level:
+      description:
+        - Controls the level of status message verbosity for the deployment.
+        - V(AllMessages) logs all status messages.
+        - V(OnlySuccessAndErrorMessages) logs successes and errors only.
+        - V(OnlyErrorMessages) logs errors only.
+      type: str
+      choices:
+        - AllMessages
+        - OnlySuccessAndErrorMessages
+        - OnlyErrorMessages
+      required: false
+    generate_success_alert:
+      description:
+        - When V(true), generates an alert when the deployment success rate exceeds
+          O(success_percentage).
+      type: bool
+      required: false
+    success_percentage:
+      description:
+        - The percentage threshold (0-100) for generating a success alert when
+          O(generate_success_alert=true).
+      type: int
+      required: false
+    generate_failure_alert:
+      description:
+        - When V(true), generates an alert when an update installation fails.
+      type: bool
+      required: false
+    alert_time:
+      description:
+        - The number of time units before the deadline at which a failure alert is generated.
+        - Used together with O(alert_time_unit).
+      type: int
+      required: false
+    alert_time_unit:
+      description:
+        - The time unit for O(alert_time).
+      type: str
+      choices:
+        - Days
+        - Hours
+        - Minutes
+        - Months
+        - Weeks
+      required: false
+    use_utc:
+      description:
+        - When V(true), deadline and available times use UTC rather than local time.
+      type: bool
+      required: false
+    send_wakeup_packet:
+      description:
+        - When V(true), sends a Wake-on-LAN packet to computers before the deployment deadline.
+      type: bool
+      required: false
+    no_install_on_remote:
+      description:
+        - When V(true), does not install updates on clients connected via a remote connection.
+      type: bool
+      required: false
+    no_install_on_unprotected:
+      description:
+        - When V(true), does not install updates on clients not protected by a fallback
+          status point.
+      type: bool
+      required: false
+    write_filter_handling:
+      description:
+        - When V(true), commits write filter changes on Windows Embedded devices before
+          the deadline.
+      type: bool
+      required: false
+    disable_operation_manager:
+      description:
+        - When V(true), disables System Center Operations Manager alerts during the update.
+      type: bool
+      required: false
+    generate_operation_manager_alert:
+      description:
+        - When V(true), generates a System Center Operations Manager alert when the
+          deployment fails.
+      type: bool
+      required: false
+    soft_deadline_enabled:
+      description:
+        - When V(true), enables a soft deadline for the deployment.
+      type: bool
+      required: false
+    require_post_reboot_full_scan:
+      description:
+        - When V(true), requires a full software update scan after reboot to verify
+          compliance.
+      type: bool
+      required: false
+  notes:
+    - This module requires the Microsoft Endpoint Configuration Manager Console to be installed on
+      the target machine.
+    - This module supports check mode (V(-WhatIf)). In check mode, C(changed=true) is reported
+      when a change would occur, but no changes are made.
+    - The collection of an existing ADR cannot be changed. To change the target collection,
+      set O(state=absent) and recreate the ADR with the new O(collection_name).
+  author:
+    - Ansible Ecosystem Engineering team (@ansible)
+
+EXAMPLES: |
+  - name: Create a basic Software Update ADR
+    microsoft.mecm.software_update_adr:
+      site_code: "XYZ"
+      name: "Monthly Security Updates"
+      collection_name: "All Workstations"
+      description: "Deploys monthly security updates"
+      update_classification:
+        - "Security Updates"
+      severity:
+        - "Critical"
+        - "Important"
+      state: present
+
+  - name: Create an ADR with a weekly schedule and deployment package
+    microsoft.mecm.software_update_adr:
+      site_code: "XYZ"
+      name: "Weekly Patch Tuesday"
+      collection_name: "All Servers"
+      description: "Patch Tuesday updates for servers"
+      deployment_package_name: "Server Updates"
+      run_type: RunTheRuleOnSchedule
+      schedule:
+        day_of_week: Wednesday
+        recur_count: 1
+      update_classification:
+        - "Critical Updates"
+        - "Security Updates"
+      product:
+        - "Windows Server 2022"
+        - "Windows Server 2019"
+      deadline_time: 7
+      deadline_time_unit: Days
+      allow_restart: true
+      suppress_restart_server: true
+      user_notification: DisplaySoftwareCenterOnly
+      verbose_level: OnlySuccessAndErrorMessages
+      generate_success_alert: true
+      success_percentage: 95
+      state: present
+
+  - name: Disable an existing ADR
+    microsoft.mecm.software_update_adr:
+      site_code: "XYZ"
+      name: "Monthly Security Updates"
+      enabled: false
+
+  - name: Check mode - preview ADR creation without making changes
+    microsoft.mecm.software_update_adr:
+      site_code: "XYZ"
+      name: "Test ADR"
+      collection_name: "All Systems"
+      update_classification:
+        - "Security Updates"
+      state: present
+    check_mode: true
+
+  - name: Remove an ADR
+    microsoft.mecm.software_update_adr:
+      site_code: "XYZ"
+      name: "Monthly Security Updates"
+      state: absent
+
+RETURN:
+  software_update_adr:
+    description: Details of the Software Update Auto Deployment Rule after the operation.
+    returned: on success
+    type: dict
+    contains:
+      name:
+        description: Name of the ADR.
+        type: str
+        returned: always
+        sample: "Monthly Security Updates"
+      id:
+        description:
+          - Unique integer identifier of the ADR.
+          - Set to C(check_mode) when the ADR is being created in check mode.
+        type: str
+        returned: always
+        sample: "16777217"
+      description:
+        description: Description of the ADR.
+        type: str
+        returned: always
+        sample: "Deploys monthly security updates"
+      collection_id:
+        description: ID of the target device collection.
+        type: str
+        returned: always
+        sample: "SMS00001"
+      is_enabled:
+        description: Whether the ADR is currently enabled.
+        type: bool
+        returned: always
+        sample: true
+      run_type:
+        description:
+          - Integer representation of the run type (stored as C(Type) in SMS_AutoDeployment).
+          - C(0) = DoNotRunThisRuleAutomatically, C(1) = RunTheRuleAfterAnySoftwareUpdatePointSynchronization,
+            C(2) = RunTheRuleOnSchedule.
+        type: int
+        returned: always
+        sample: 1
+      last_run_time:
+        description: Timestamp of the last time the ADR ran, or empty string if never run.
+        type: str
+        returned: always
+        sample: "2025-12-10 02:00:00 +0"

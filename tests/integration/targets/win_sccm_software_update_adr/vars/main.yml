@@ -1,0 +1,15 @@
+---
+test_adr_name: "{{ unique_test_id }}-adr"
+test_collection_name: "All Systems"
+test_adr_description: "Integration test ADR - initial description"
+test_adr_description_updated: "Integration test ADR - updated description"
+test_update_classification:
+  - "Security Updates"
+test_update_classification_updated:
+  - "Critical Updates"
+  - "Security Updates"
+test_severity:
+  - "Critical"
+test_severity_updated:
+  - "Critical"
+  - "Important"

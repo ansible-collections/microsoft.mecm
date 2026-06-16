@@ -1,0 +1,506 @@
+---
+# Integration tests for microsoft.mecm.software_update_adr and microsoft.mecm.software_update_adr_info
+
+- name: Test software_update_adr and software_update_adr_info
+  block:
+
+    # -------------------------------------------------------------------------
+    # 1. Check mode - creation
+    # -------------------------------------------------------------------------
+    - name: Create ADR - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        collection_name: "{{ test_collection_name }}"
+        description: "{{ test_adr_description }}"
+        update_classification: "{{ test_update_classification }}"
+        severity: "{{ test_severity }}"
+        run_type: "DoNotRunThisRuleAutomatically"
+        state: present
+      check_mode: true
+      register: _create_adr_check
+
+    - name: Info - verify ADR was not created in check mode
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_after_check_create
+
+    - name: Assert check mode creation
+      ansible.builtin.assert:
+        that:
+          - _create_adr_check is ansible.builtin.changed
+          - _info_after_check_create.software_update_adrs | length == 0
+        fail_msg: >-
+          Check mode creation failed: expected changed=true and no ADR created.
+          got changed={{ _create_adr_check.changed }},
+          adrs_found={{ _info_after_check_create.software_update_adrs | length }}
+
+    # -------------------------------------------------------------------------
+    # 2 + 3. Create ADR and verify idempotency
+    # -------------------------------------------------------------------------
+    - name: Create ADR
+      microsoft.mecm.software_update_adr: &create_adr
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        collection_name: "{{ test_collection_name }}"
+        description: "{{ test_adr_description }}"
+        update_classification: "{{ test_update_classification }}"
+        severity: "{{ test_severity }}"
+        run_type: "DoNotRunThisRuleAutomatically"
+        state: present
+      register: _create_adr
+
+    - name: Create ADR - idempotency
+      microsoft.mecm.software_update_adr: *create_adr
+      register: _create_adr_idempotency
+
+    # -------------------------------------------------------------------------
+    # 4. Verify creation via software_update_adr_info
+    # -------------------------------------------------------------------------
+    - name: Info - get ADR by name after creation
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_after_create
+
+    - name: Info - get all ADRs (no name filter)
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+      register: _info_all_adrs
+
+    - name: Assert creation results
+      ansible.builtin.assert:
+        that:
+          # Task change status
+          - _create_adr is ansible.builtin.changed
+          - _create_adr_idempotency is not ansible.builtin.changed
+          # Module return value
+          - _create_adr.software_update_adr.name == test_adr_name
+          - _create_adr.software_update_adr.id is defined
+          - _create_adr.software_update_adr.collection_id is defined
+          - _create_adr.software_update_adr.description == test_adr_description
+          - _create_adr.software_update_adr.is_enabled == true
+          - _create_adr.software_update_adr.run_type == 0
+          # Info module - single lookup
+          - _info_after_create.software_update_adrs | length == 1
+          - _info_after_create.software_update_adrs[0].name == test_adr_name
+          - _info_after_create.software_update_adrs[0].id == _create_adr.software_update_adr.id
+          - _info_after_create.software_update_adrs[0].description == test_adr_description
+          - _info_after_create.software_update_adrs[0].collection_id == _create_adr.software_update_adr.collection_id
+          - _info_after_create.software_update_adrs[0].is_enabled == true
+          - _info_after_create.software_update_adrs[0].run_type == 0
+          - _info_after_create.software_update_adrs[0].last_run_time is defined
+          # Info module - no-filter lookup must include our new ADR
+          - _info_all_adrs.software_update_adrs | selectattr('name', 'equalto', test_adr_name) | list | length == 1
+        fail_msg: >-
+          Creation assertion failed.
+          create_changed={{ _create_adr.changed }},
+          idempotency_changed={{ _create_adr_idempotency.changed }},
+          adrs_found={{ _info_after_create.software_update_adrs | length }}
+
+    # -------------------------------------------------------------------------
+    # 5. Update description
+    # -------------------------------------------------------------------------
+    - name: Update ADR description - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        description: "{{ test_adr_description_updated }}"
+        state: present
+      check_mode: true
+      register: _update_desc_check
+
+    - name: Update ADR description
+      microsoft.mecm.software_update_adr: &update_description
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        description: "{{ test_adr_description_updated }}"
+        state: present
+      register: _update_desc
+
+    - name: Update ADR description - idempotency
+      microsoft.mecm.software_update_adr: *update_description
+      register: _update_desc_idempotency
+
+    - name: Info - verify description update
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_after_desc_update
+
+    - name: Assert description update results
+      ansible.builtin.assert:
+        that:
+          - _update_desc_check is ansible.builtin.changed
+          - _update_desc is ansible.builtin.changed
+          - _update_desc_idempotency is not ansible.builtin.changed
+          - _info_after_desc_update.software_update_adrs[0].description == test_adr_description_updated
+        fail_msg: >-
+          Description update assertion failed.
+          check_changed={{ _update_desc_check.changed }},
+          update_changed={{ _update_desc.changed }},
+          idempotency_changed={{ _update_desc_idempotency.changed }},
+          actual_description={{ _info_after_desc_update.software_update_adrs[0].description }}
+
+    # -------------------------------------------------------------------------
+    # 6. Update enabled - disable the ADR
+    # -------------------------------------------------------------------------
+    - name: Disable ADR - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        enabled: false
+        state: present
+      check_mode: true
+      register: _disable_adr_check
+
+    - name: Disable ADR
+      microsoft.mecm.software_update_adr: &disable_adr
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        enabled: false
+        state: present
+      register: _disable_adr
+
+    - name: Disable ADR - idempotency
+      microsoft.mecm.software_update_adr: *disable_adr
+      register: _disable_adr_idempotency
+
+    - name: Info - verify ADR is disabled
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_after_disable
+
+    - name: Assert disable results
+      ansible.builtin.assert:
+        that:
+          - _disable_adr_check is ansible.builtin.changed
+          - _disable_adr is ansible.builtin.changed
+          - _disable_adr_idempotency is not ansible.builtin.changed
+          - _info_after_disable.software_update_adrs[0].is_enabled == false
+        fail_msg: >-
+          Disable assertion failed.
+          check_changed={{ _disable_adr_check.changed }},
+          update_changed={{ _disable_adr.changed }},
+          idempotency_changed={{ _disable_adr_idempotency.changed }},
+          is_enabled={{ _info_after_disable.software_update_adrs[0].is_enabled }}
+
+    # -------------------------------------------------------------------------
+    # 7. Update enabled - re-enable the ADR
+    # -------------------------------------------------------------------------
+    - name: Re-enable ADR - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        enabled: true
+        state: present
+      check_mode: true
+      register: _enable_adr_check
+
+    - name: Re-enable ADR
+      microsoft.mecm.software_update_adr: &enable_adr
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        enabled: true
+        state: present
+      register: _enable_adr
+
+    - name: Re-enable ADR - idempotency
+      microsoft.mecm.software_update_adr: *enable_adr
+      register: _enable_adr_idempotency
+
+    - name: Info - verify ADR is re-enabled
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_after_enable
+
+    - name: Assert re-enable results
+      ansible.builtin.assert:
+        that:
+          - _enable_adr_check is ansible.builtin.changed
+          - _enable_adr is ansible.builtin.changed
+          - _enable_adr_idempotency is not ansible.builtin.changed
+          - _info_after_enable.software_update_adrs[0].is_enabled == true
+        fail_msg: >-
+          Re-enable assertion failed.
+          check_changed={{ _enable_adr_check.changed }},
+          update_changed={{ _enable_adr.changed }},
+          idempotency_changed={{ _enable_adr_idempotency.changed }},
+          is_enabled={{ _info_after_enable.software_update_adrs[0].is_enabled }}
+
+    # -------------------------------------------------------------------------
+    # 8. Update run_type
+    # The ADR was created with DoNotRunThisRuleAutomatically (run_type=0).
+    # Change to RunTheRuleAfterAnySoftwareUpdatePointSynchronization (run_type=2).
+    # -------------------------------------------------------------------------
+    - name: Update run_type - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        run_type: "RunTheRuleAfterAnySoftwareUpdatePointSynchronization"
+        state: present
+      check_mode: true
+      register: _update_run_type_check
+
+    - name: Update run_type
+      microsoft.mecm.software_update_adr: &update_run_type
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        run_type: "RunTheRuleAfterAnySoftwareUpdatePointSynchronization"
+        state: present
+      register: _update_run_type
+
+    - name: Update run_type - idempotency
+      microsoft.mecm.software_update_adr: *update_run_type
+      register: _update_run_type_idempotency
+
+    - name: Info - verify run_type update
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_after_run_type_update
+
+    - name: Assert run_type update results
+      ansible.builtin.assert:
+        that:
+          - _update_run_type_check is ansible.builtin.changed
+          - _update_run_type is ansible.builtin.changed
+          - _update_run_type_idempotency is not ansible.builtin.changed
+          - _info_after_run_type_update.software_update_adrs[0].run_type == 2
+        fail_msg: >-
+          run_type update assertion failed.
+          check_changed={{ _update_run_type_check.changed }},
+          update_changed={{ _update_run_type.changed }},
+          idempotency_changed={{ _update_run_type_idempotency.changed }},
+          run_type={{ _info_after_run_type_update.software_update_adrs[0].run_type }}
+
+    # Restore run_type to DoNotRunThisRuleAutomatically for subsequent tests
+    - name: Restore run_type to DoNotRunThisRuleAutomatically
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        run_type: "DoNotRunThisRuleAutomatically"
+        state: present
+
+    # -------------------------------------------------------------------------
+    # 9. Update severity
+    # -------------------------------------------------------------------------
+    - name: Update severity - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        severity: "{{ test_severity_updated }}"
+        state: present
+      check_mode: true
+      register: _update_severity_check
+
+    - name: Update severity
+      microsoft.mecm.software_update_adr: &update_severity
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        severity: "{{ test_severity_updated }}"
+        state: present
+      register: _update_severity
+
+    - name: Update severity - idempotency
+      microsoft.mecm.software_update_adr: *update_severity
+      register: _update_severity_idempotency
+
+    - name: Assert severity update results
+      ansible.builtin.assert:
+        that:
+          - _update_severity_check is ansible.builtin.changed
+          - _update_severity is ansible.builtin.changed
+          - _update_severity_idempotency is not ansible.builtin.changed
+        fail_msg: >-
+          Severity update assertion failed.
+          check_changed={{ _update_severity_check.changed }},
+          update_changed={{ _update_severity.changed }},
+          idempotency_changed={{ _update_severity_idempotency.changed }}
+
+    # -------------------------------------------------------------------------
+    # 10. Update update_classification
+    # -------------------------------------------------------------------------
+    - name: Update update_classification - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        update_classification: "{{ test_update_classification_updated }}"
+        state: present
+      check_mode: true
+      register: _update_classification_check
+
+    - name: Update update_classification
+      microsoft.mecm.software_update_adr: &update_classification
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        update_classification: "{{ test_update_classification_updated }}"
+        state: present
+      register: _update_classification
+
+    - name: Update update_classification - idempotency
+      microsoft.mecm.software_update_adr: *update_classification
+      register: _update_classification_idempotency
+
+    - name: Assert update_classification update results
+      ansible.builtin.assert:
+        that:
+          - _update_classification_check is ansible.builtin.changed
+          - _update_classification is ansible.builtin.changed
+          - _update_classification_idempotency is not ansible.builtin.changed
+        fail_msg: >-
+          update_classification assertion failed.
+          check_changed={{ _update_classification_check.changed }},
+          update_changed={{ _update_classification.changed }},
+          idempotency_changed={{ _update_classification_idempotency.changed }}
+
+    # -------------------------------------------------------------------------
+    # 11. Update deployment options
+    # These are stored in DeploymentTemplate / AutoDeploymentProperties XML.
+    # -------------------------------------------------------------------------
+    - name: Update deployment options - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        allow_restart: true
+        suppress_restart_server: true
+        suppress_restart_workstation: false
+        use_utc: true
+        user_notification: "DisplaySoftwareCenterOnly"
+        verbose_level: "OnlySuccessAndErrorMessages"
+        deadline_time: 7
+        deadline_time_unit: "Days"
+        generate_success_alert: true
+        success_percentage: 90
+        state: present
+      check_mode: true
+      register: _update_deploy_opts_check
+
+    - name: Update deployment options
+      microsoft.mecm.software_update_adr: &update_deploy_opts
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        allow_restart: true
+        suppress_restart_server: true
+        suppress_restart_workstation: false
+        use_utc: true
+        user_notification: "DisplaySoftwareCenterOnly"
+        verbose_level: "OnlySuccessAndErrorMessages"
+        deadline_time: 7
+        deadline_time_unit: "Days"
+        generate_success_alert: true
+        success_percentage: 90
+        state: present
+      register: _update_deploy_opts
+
+    - name: Update deployment options - idempotency
+      microsoft.mecm.software_update_adr: *update_deploy_opts
+      register: _update_deploy_opts_idempotency
+
+    - name: Assert deployment options update results
+      ansible.builtin.assert:
+        that:
+          - _update_deploy_opts_check is ansible.builtin.changed
+          - _update_deploy_opts is ansible.builtin.changed
+          - _update_deploy_opts_idempotency is not ansible.builtin.changed
+        fail_msg: >-
+          Deployment options assertion failed.
+          check_changed={{ _update_deploy_opts_check.changed }},
+          update_changed={{ _update_deploy_opts.changed }},
+          idempotency_changed={{ _update_deploy_opts_idempotency.changed }}
+
+    # -------------------------------------------------------------------------
+    # Final info assertion - verify all info module fields are present and correct
+    # -------------------------------------------------------------------------
+    - name: Info - final state check
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_final
+
+    - name: Assert final info module output structure
+      ansible.builtin.assert:
+        that:
+          - _info_final.software_update_adrs | length == 1
+          - _info_final.software_update_adrs[0].name == test_adr_name
+          - _info_final.software_update_adrs[0].id is defined
+          - _info_final.software_update_adrs[0].id | string | length > 0
+          - _info_final.software_update_adrs[0].description is defined
+          - _info_final.software_update_adrs[0].collection_id is defined
+          - _info_final.software_update_adrs[0].collection_id | string | length > 0
+          - _info_final.software_update_adrs[0].is_enabled is defined
+          - _info_final.software_update_adrs[0].run_type is defined
+          - _info_final.software_update_adrs[0].last_run_time is defined
+        fail_msg: >-
+          Final info assertion failed: one or more required fields are missing.
+          adrs={{ _info_final.software_update_adrs }}
+
+    # -------------------------------------------------------------------------
+    # 12. Check mode - deletion (ADR must still exist after check mode)
+    # -------------------------------------------------------------------------
+    - name: Delete ADR - check mode
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        state: absent
+      check_mode: true
+      register: _delete_adr_check
+
+    - name: Info - verify ADR still exists after check mode deletion
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_after_check_delete
+
+    - name: Assert check mode deletion
+      ansible.builtin.assert:
+        that:
+          - _delete_adr_check is ansible.builtin.changed
+          - _info_after_check_delete.software_update_adrs | length == 1
+        fail_msg: >-
+          Check mode deletion assertion failed.
+          check_changed={{ _delete_adr_check.changed }},
+          adrs_found={{ _info_after_check_delete.software_update_adrs | length }}
+
+    # -------------------------------------------------------------------------
+    # 13 + 14. Delete ADR and verify idempotency
+    # -------------------------------------------------------------------------
+    - name: Delete ADR
+      microsoft.mecm.software_update_adr: &delete_adr
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        state: absent
+      register: _delete_adr
+
+    - name: Delete ADR - idempotency
+      microsoft.mecm.software_update_adr: *delete_adr
+      register: _delete_adr_idempotency
+
+    - name: Info - verify ADR no longer exists
+      microsoft.mecm.software_update_adr_info:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+      register: _info_after_delete
+
+    - name: Assert deletion results
+      ansible.builtin.assert:
+        that:
+          - _delete_adr is ansible.builtin.changed
+          - _delete_adr_idempotency is not ansible.builtin.changed
+          - _info_after_delete.software_update_adrs | length == 0
+        fail_msg: >-
+          Deletion assertion failed.
+          delete_changed={{ _delete_adr.changed }},
+          idempotency_changed={{ _delete_adr_idempotency.changed }},
+          adrs_found={{ _info_after_delete.software_update_adrs | length }}
+
+  always:
+    - name: Cleanup - remove test ADR if it still exists
+      microsoft.mecm.software_update_adr:
+        site_code: "{{ test_site_code }}"
+        name: "{{ test_adr_name }}"
+        state: absent
+      ignore_errors: true

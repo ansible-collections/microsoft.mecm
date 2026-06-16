@@ -1,0 +1,109 @@
+---
+# Copyright: (c) 2025, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: software_update_adr_info
+  short_description: Gather information about Software Update Auto Deployment Rules in MECM
+  description:
+    - Gathers information about one or all Software Update Auto Deployment Rules (ADRs)
+      in a Configuration Manager site.
+    - When O(name) is provided, returns information for that specific ADR only.
+    - When O(name) is omitted, returns information for all ADRs in the site.
+    - Uses C(Get-CMSoftwareUpdateAutoDeploymentRule) with the C(-Fast) parameter.
+  version_added: "1.3.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_cm_ps_module
+  requirements:
+    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
+    - Administrative access to Microsoft Endpoint Configuration Manager site server
+  options:
+    site_code:
+      description:
+        - The site code of the Configuration Manager site to connect to.
+      type: str
+      required: true
+    name:
+      description:
+        - The name of the Software Update Auto Deployment Rule to retrieve.
+        - When omitted, information for all ADRs in the site is returned.
+      type: str
+      required: false
+  notes:
+    - This module requires the Microsoft Endpoint Configuration Manager Console to be installed
+      on the target machine.
+    - This module always reports C(changed=false) as it is a read-only operation.
+    - When O(name) is provided and the ADR is not found, the module emits a warning and
+      returns an empty list.
+  author:
+    - Ansible Ecosystem Engineering team (@ansible)
+
+EXAMPLES: |
+  - name: Gather information about all Software Update ADRs
+    microsoft.mecm.software_update_adr_info:
+      site_code: "XYZ"
+
+  - name: Gather information about a specific Software Update ADR by name
+    microsoft.mecm.software_update_adr_info:
+      site_code: "XYZ"
+      name: "Monthly Security Updates"
+
+RETURN:
+  software_update_adrs:
+    description: List of Software Update Auto Deployment Rules matching the query.
+    returned: always
+    type: list
+    elements: dict
+    sample: |-
+      [
+        {
+          "name": "Monthly Security Updates",
+          "id": "16777217",
+          "description": "Deploys monthly security updates",
+          "collection_id": "SMS00001",
+          "is_enabled": true,
+          "run_type": 2,
+          "last_run_time": "2025-12-10 02:00:00 +0",
+          "next_run_time": "2026-01-14 02:00:00 +0"
+        }
+      ]
+    contains:
+      name:
+        description: Name of the ADR.
+        type: str
+        returned: always
+        sample: "Monthly Security Updates"
+      id:
+        description: Unique integer identifier of the ADR.
+        type: str
+        returned: always
+        sample: "16777217"
+      description:
+        description: Description of the ADR.
+        type: str
+        returned: always
+        sample: "Deploys monthly security updates"
+      collection_id:
+        description: ID of the target device collection.
+        type: str
+        returned: always
+        sample: "SMS00001"
+      is_enabled:
+        description: Whether the ADR is currently enabled (read from C(AutoDeploymentEnabled)).
+        type: bool
+        returned: always
+        sample: true
+      run_type:
+        description:
+          - Integer representation of the run type (read from C(Type) in SMS_AutoDeployment).
+          - C(0) = DoNotRunThisRuleAutomatically,
+            C(1) = RunTheRuleAfterAnySoftwareUpdatePointSynchronization,
+            C(2) = RunTheRuleOnSchedule.
+        type: int
+        returned: always
+        sample: 2
+      last_run_time:
+        description: Timestamp of the last time the ADR ran, or empty string if never run.
+        type: str
+        returned: always
+        sample: "2025-12-10 02:00:00 +0"
