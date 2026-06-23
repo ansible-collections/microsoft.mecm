@@ -10,42 +10,29 @@ env:
   GHP_BASE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
 
 jobs:
-  approve:
-    name: Approve Docs Build
-    runs-on: ubuntu-latest
-    environment:
-      name: eco-mecm
-    steps:
-      - run: echo "Docs build approved"
-
   # Validation job runs a strict build to ensure it will fail CI on any mistakes.
   validate-docs:
-    needs: [approve]
     permissions:
       contents: read
     name: Validate Ansible Docs
-    if: always() && needs.approve.result == 'success' && github.event.action != 'closed'
+    if: github.event.action != 'closed'
     uses: ansible-community/github-docs-build/.github/workflows/_shared-docs-build-push.yml@main
     with:
       artifact-upload: false
       init-lenient: false
       init-fail-on-error: true
       build-ref: refs/pull/${{ github.event.number }}/merge
-      allow-unsafe-pr-checkout: true
 
   # The build job runs with the most lenient settings to ensure the best chance of getting
   # a rendered docsite that can be looked at.
   build-docs:
-    needs: [approve]
     permissions:
       contents: read
     name: Build Ansible Docs
-    if: always() && needs.approve.result == 'success'
     uses: ansible-community/github-docs-build/.github/workflows/_shared-docs-build-pr.yml@main
     with:
       init-lenient: true
       init-fail-on-error: false
-      allow-unsafe-pr-checkout: true
 
   comment:
     permissions:
