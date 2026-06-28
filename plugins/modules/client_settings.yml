@@ -7,7 +7,6 @@ DOCUMENTATION:
   short_description: Create, update, or delete client settings in Microsoft Endpoint Configuration Manager (MECM)
   description:
     - This module creates, updates, or deletes client settings in a Configuration Manager site.
-    - Uses the V(New-CMClientSetting), V(Set-CMClientSettingGeneral), and V(Remove-CMClientSetting) cmdlets.
     - O(description) and O(priority) can be modified on an existing client setting.
     - O(custom_device_settings) and O(custom_user_settings) define which setting categories are active and are
       fully idempotent — the module reconciles the system state to match exactly what is declared.
@@ -16,16 +15,7 @@ DOCUMENTATION:
   version_added: "1.1.0"
   extends_documentation_fragment:
     - microsoft.mecm.uses_cm_ps_module
-  requirements:
-    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
-    - Administrative access to Microsoft Endpoint Configuration Manager site server
   options:
-    site_code:
-      description:
-        - The site code of the Configuration Manager site to connect to.
-        - This determines which CM site drive to use and is required for connecting to the correct domain.
-      type: str
-      required: true
     name:
       description:
         - The name of the client setting to create or manage.
@@ -35,8 +25,8 @@ DOCUMENTATION:
     type:
       description:
         - The type of client setting to create.
-        - V(device) — a custom client setting targeting device (computer) collections.
-        - V(user) — a custom client setting targeting user collections.
+        - V(device) - a custom client setting targeting device (computer) collections.
+        - V(user) - a custom client setting targeting user collections.
         - The type cannot be changed after the client setting is created.
       type: str
       required: true
@@ -73,8 +63,6 @@ DOCUMENTATION:
           V(system) cannot be combined with other choices — doing so raises an error.
         - >-
           B(Passing an empty list) C([]) explicitly removes all existing custom device settings.
-        - Custom settings are applied via WMI method calls and are not applied during check mode,
-          though the required change is still detected and reported.
       type: list
       elements: str
       required: false
@@ -107,7 +95,6 @@ DOCUMENTATION:
       description:
         - List of custom setting categories to enable on a V(user) type client setting.
         - Only valid when O(type) is V(user).
-        - Only three categories are available for user type client settings.
         - The list is idempotent — categories present in the system but absent from this list will be removed,
           and categories in this list but absent from the system will be added.
         - >-
@@ -119,8 +106,6 @@ DOCUMENTATION:
           V(system) cannot be combined with other choices — doing so raises an error.
         - >-
           B(Passing an empty list) C([]) explicitly removes all existing custom user settings.
-        - Custom settings are applied via WMI method calls and are not applied during check mode,
-          though the required change is still detected and reported.
       type: list
       elements: str
       required: false
@@ -140,16 +125,13 @@ DOCUMENTATION:
         - absent
       default: present
   notes:
-    - This module requires the Microsoft Endpoint Configuration Manager Console to be installed on the target machine.
-    - The module uses V(New-CMClientSetting), V(Set-CMClientSettingGeneral), and V(Remove-CMClientSetting) cmdlets.
     - The O(type) parameter cannot be changed after the client setting is created.
     - O(custom_device_settings) and O(custom_user_settings) are mutually exclusive with each other's type
       O(custom_device_settings) requires O(type=device) and O(custom_user_settings) requires O(type=user).
     - This module supports idempotency and check mode.
     - "B(Permissions): Requires administrative access to create, update, and delete MECM client settings."
   author:
-    - Ansible Ecosystem Engineering team (@ansible)
-    - Shahar Golshani (@shahargolshani)
+    - Ansible Ecosystem Engineering team (@eco-ansible-content)
 
 EXAMPLES: |
   - name: Create the PS drive for the site

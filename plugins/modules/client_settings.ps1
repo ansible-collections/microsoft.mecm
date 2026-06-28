@@ -5,13 +5,7 @@
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
 #AnsibleRequires -PowerShell ..module_utils._CMPsSetupUtils
-
-
-$CLIENT_SETTING_TYPE_INT = @{
-    0 = 'default'
-    1 = 'device'
-    2 = 'user'
-}
+#AnsibleRequires -PowerShell ..module_utils._ClientSettingUtils
 
 
 $CLIENT_SETTING_TYPE_CMDLET = @{
@@ -175,23 +169,6 @@ function Set-CustomSetting {
 }
 
 
-function Format-ClientSettingResult {
-    param (
-        [Parameter(Mandatory = $true)][object]$setting
-    )
-    $type_int = [int]$setting.Type
-    $type_str = if ($CLIENT_SETTING_TYPE_INT.ContainsKey($type_int)) { $CLIENT_SETTING_TYPE_INT[$type_int] } else { $type_int.ToString() }
-
-    return @{
-        name = $setting.Name
-        description = if ($null -ne $setting.Description) { $setting.Description } else { '' }
-        type = $type_str
-        priority = [int]$setting.Priority
-        settings_id = $setting.SettingsID.ToString()
-    }
-}
-
-
 function Set-ClientSettingPriority {
     param (
         [Parameter(Mandatory = $true)][string]$name,
@@ -351,7 +328,7 @@ elseif ($state -eq 'present') {
     }
     else {
         $type_int = [int]$client_setting.Type
-        $current_type = if ($CLIENT_SETTING_TYPE_INT.ContainsKey($type_int)) { $CLIENT_SETTING_TYPE_INT[$type_int] } else { $type_int.ToString() }
+        $current_type = ConvertTo-ClientSettingTypeString -TypeInt $type_int
         if ($type -ne $current_type) {
             $module.Warn("The type of client setting '$name' cannot be changed after creation. " +
                 "Current type is '$current_type'; ignoring requested type '$type'.")

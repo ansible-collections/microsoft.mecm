@@ -7,7 +7,6 @@ DOCUMENTATION:
   short_description: Retrieve information about client settings in Microsoft Endpoint Configuration Manager (MECM)
   description:
     - This module retrieves information about one or more client settings from a Configuration Manager site.
-    - Uses the V(Get-CMClientSetting) PowerShell cmdlet.
     - When O(name) is not specified, all client settings defined in the site are returned.
     - When O(name) is specified, only the client setting with that exact name is returned.
     - For more information, see
@@ -15,16 +14,7 @@ DOCUMENTATION:
   version_added: "1.1.0"
   extends_documentation_fragment:
     - microsoft.mecm.uses_cm_ps_module
-  requirements:
-    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
-    - Administrative access to Microsoft Endpoint Configuration Manager site server
   options:
-    site_code:
-      description:
-        - The site code of the Configuration Manager site to connect to.
-        - This determines which CM site drive to use and is required for connecting to the correct domain.
-      type: str
-      required: true
     name:
       description:
         - Optional client setting name filter.
@@ -33,12 +23,10 @@ DOCUMENTATION:
       type: str
       required: false
   notes:
-    - This module requires the Microsoft Endpoint Configuration Manager Console to be installed on the target machine.
     - This is a read-only module; it never modifies the site configuration.
     - "B(Permissions): Requires read access to MECM client settings."
   author:
-    - Ansible Ecosystem Engineering team (@ansible)
-    - Shahar Golshani (@shahargolshani)
+    - Ansible Ecosystem Engineering team (@eco-ansible-content)
 
 EXAMPLES: |
   - name: Retrieve all client settings in the site

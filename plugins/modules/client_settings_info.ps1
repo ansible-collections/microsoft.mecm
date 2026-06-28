@@ -5,34 +5,7 @@
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
 #AnsibleRequires -PowerShell ..module_utils._CMPsSetupUtils
-
-
-# Maps integer Type values returned by Get-CMClientSetting to human-readable strings.
-# 0 = default (read-only, cannot be created via this module)
-# 1 = device
-# 2 = user
-$CLIENT_SETTING_TYPE_INT = @{
-    0 = 'default'
-    1 = 'device'
-    2 = 'user'
-}
-
-
-function Format-ClientSettingResult {
-    param (
-        [Parameter(Mandatory = $true)][object]$setting
-    )
-    $type_int = [int]$setting.Type
-    $type_str = if ($CLIENT_SETTING_TYPE_INT.ContainsKey($type_int)) { $CLIENT_SETTING_TYPE_INT[$type_int] } else { $type_int.ToString() }
-
-    return @{
-        name = $setting.Name
-        description = if ($null -ne $setting.Description) { $setting.Description } else { '' }
-        type = $type_str
-        priority = [int]$setting.Priority
-        settings_id = $setting.SettingsID.ToString()
-    }
-}
+#AnsibleRequires -PowerShell ..module_utils._ClientSettingUtils
 
 
 $spec = @{
