@@ -8,21 +8,11 @@ DOCUMENTATION:
   description:
     - Returns information about one or all Device Collections in a Configuration Manager site.
     - Each returned collection includes its query and direct membership rules.
-    - Uses C(Get-CMDeviceCollection), C(Get-CMDeviceCollectionQueryMembershipRule), and
-      C(Get-CMDeviceCollectionDirectMembershipRule) cmdlets.
     - When no C(name) is provided, all device collections are returned.
-  version_added: "1.2.0"
+  version_added: "1.1.0"
   extends_documentation_fragment:
     - microsoft.mecm.uses_cm_ps_module
-  requirements:
-    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
-    - Administrative access to Microsoft Endpoint Configuration Manager site server
   options:
-    site_code:
-      description:
-        - The site code of the Configuration Manager site to connect to.
-      type: str
-      required: true
     name:
       description:
         - Name of a specific device collection to retrieve.
@@ -31,7 +21,7 @@ DOCUMENTATION:
       type: str
       required: false
   author:
-    - "Ansible Project (@ansible)"
+    - Ansible Ecosystem Engineering team (@eco-ansible-content)
 
 EXAMPLES: |
   - name: Get all device collections

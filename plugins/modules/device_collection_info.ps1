@@ -5,18 +5,7 @@
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
 #AnsibleRequires -PowerShell ..module_utils._CMPsSetupUtils
-
-
-function ConvertFrom-CMRefreshType {
-    param ([int]$value)
-    switch ($value) {
-        1 { return 'Manual' }
-        2 { return 'Periodic' }
-        4 { return 'Continuous' }
-        6 { return 'Both' }
-        default { return "Unknown ($value)" }
-    }
-}
+#AnsibleRequires -PowerShell ..module_utils._DeviceCollectionUtils
 
 
 $spec = @{

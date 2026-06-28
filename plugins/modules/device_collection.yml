@@ -7,27 +7,16 @@ DOCUMENTATION:
   short_description: Create, update, or delete a Device Collection in MECM
   description:
     - Creates, updates, or removes a Device Collection in a Configuration Manager site.
-    - Uses C(New-CMDeviceCollection), C(Set-CMCollection), and C(Remove-CMDeviceCollection) cmdlets.
     - When C(refresh_type) is C(Periodic) or C(Both), a refresh schedule can be defined using
       C(schedule_recur_interval), C(schedule_recur_count), and C(schedule_start). All three must
-      be provided together or omitted entirely. The schedule object is built with C(New-CMSchedule).
+      be provided together or omitted entirely.
     - Supports query and direct membership rules using C(device_collection_query_rules) and
       C(device_collection_direct_rules). Rules are reconciled idempotently - the module adds missing
       rules, removes extra rules, and updates query rules whose expression has changed.
-      Uses C(Add-CMDeviceCollectionQueryMembershipRule), C(Remove-CMDeviceCollectionQueryMembershipRule),
-      C(Add-CMDeviceCollectionDirectMembershipRule), and C(Remove-CMDeviceCollectionDirectMembershipRule).
-  version_added: "1.2.0"
+  version_added: "1.1.0"
   extends_documentation_fragment:
     - microsoft.mecm.uses_cm_ps_module
-  requirements:
-    - Microsoft Endpoint Configuration Manager PowerShell module (ConfigurationManager)
-    - Administrative access to Microsoft Endpoint Configuration Manager site server
   options:
-    site_code:
-      description:
-        - The site code of the Configuration Manager site to connect to.
-      type: str
-      required: true
     name:
       description:
         - The name of the device collection.
@@ -48,8 +37,6 @@ DOCUMENTATION:
         - C(Periodic) runs a full membership update on a schedule.
         - C(Continuous) uses incremental updates triggered by resource discovery.
         - C(Both) combines C(Periodic) full updates and C(Continuous) incremental updates.
-        - When omitted during collection creation the module defaults to C(Manual).
-        - When omitted on an existing collection the current value is left unchanged.
       type: str
       choices:
         - Manual
@@ -91,9 +78,8 @@ DOCUMENTATION:
     device_collection_query_rules:
       description:
         - List of query membership rules to enforce on the device collection.
-        - When omitted, existing query rules are left unchanged.
         - When provided as an empty list (C([])), all existing query rules are removed.
-        - When provided, the module reconciles query rules to exactly match the desired set —
+        - When provided, the module reconciles query rules to exactly match the desired set
           adding missing rules, removing extra rules, and updating rules whose expression has changed.
         - Only valid when C(state=present).
       type: list
@@ -138,7 +124,7 @@ DOCUMENTATION:
         - absent
       default: present
   author:
-    - "Ansible Project (@ansible)"
+    - Ansible Ecosystem Engineering team (@eco-ansible-content)
 
 EXAMPLES: |
   - name: Create a device collection with manual refresh type

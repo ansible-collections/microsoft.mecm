@@ -5,18 +5,7 @@
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
 #AnsibleRequires -PowerShell ..module_utils._CMPsSetupUtils
-
-
-function ConvertFrom-CMRefreshType {
-    param ([int]$value)
-    switch ($value) {
-        1 { return 'Manual' }
-        2 { return 'Periodic' }
-        4 { return 'Continuous' }
-        6 { return 'Both' }
-        default { return "Unknown ($value)" }
-    }
-}
+#AnsibleRequires -PowerShell ..module_utils._DeviceCollectionUtils
 
 
 function Format-DeviceCollectionResult {
@@ -142,8 +131,6 @@ function Sync-CollectionRule {
     $manageQuery = ($null -ne $desiredQueryRules)
     $manageDirect = ($null -ne $desiredDirectRules)
 
-    # Current rules: empty when collection does not yet exist (new collection in check mode).
-    # Only fetch the rule type(s) being managed to avoid unnecessary API calls.
     $currentQueryRules = @()
     $currentDirectRules = @()
     if ($collectionExists) {
@@ -151,7 +138,7 @@ function Sync-CollectionRule {
         if ($manageDirect) { $currentDirectRules = Get-CollectionDirectRule -module $module -collectionName $collectionName }
     }
 
-    # ----- Query rules -----
+    # Query rules
     if ($manageQuery) {
         $currentQueryRuleNames = @($currentQueryRules | ForEach-Object { $_.RuleName })
         $desiredQueryRuleNames = @($desiredQueryRules | ForEach-Object { $_.rule_name })
@@ -213,7 +200,7 @@ function Sync-CollectionRule {
         }
     }
 
-    # ----- Direct rules -----
+    # Direct rules
     if ($manageDirect) {
         $desiredResourceIds = @($desiredDirectRules | ForEach-Object { $_.resource_id } | Sort-Object -Unique)
         $currentResourceIds = @($currentDirectRules | ForEach-Object { [int]$_.ResourceID })
@@ -340,14 +327,12 @@ if ($state -eq 'absent') {
     }
 }
 elseif ($state -eq 'present') {
-    # Validate schedule parameters: all three must be provided together or not at all
     $schedule_params_provided = @($schedule_recur_interval, $schedule_recur_count, $schedule_start) | Where-Object { $null -ne $_ }
     if ($schedule_params_provided.Count -gt 0 -and $schedule_params_provided.Count -lt 3) {
         $module.FailJson("All three schedule parameters must be provided together: schedule_recur_interval, schedule_recur_count, schedule_start.")
     }
     $has_schedule = ($schedule_params_provided.Count -eq 3)
 
-    # Schedule parameters are only valid when refresh_type is Periodic or Both
     if ($has_schedule -and ($refresh_type -ne 'Periodic' -and $refresh_type -ne 'Both')) {
         $module.FailJson(
             "Schedule parameters (schedule_recur_interval, schedule_recur_count, schedule_start) " +
@@ -355,7 +340,6 @@ elseif ($state -eq 'present') {
         )
     }
 
-    # Parse schedule_start string to DateTime and validate recur count range
     $schedule_start_dt = $null
     if ($has_schedule) {
         try {
@@ -404,7 +388,6 @@ elseif ($state -eq 'present') {
             $module.FailJson("Failed to create device collection '$name': $($_.Exception.Message)", $_)
         }
 
-        # Sync membership rules (collection exists only in non-check-mode after the above call)
         if ($null -ne $dc_query_rules -or $null -ne $dc_direct_rules) {
             Sync-CollectionRule -module $module -collectionName $name `
                 -desiredQueryRules $dc_query_rules -desiredDirectRules $dc_direct_rules `
@@ -459,7 +442,6 @@ elseif ($state -eq 'present') {
         $limiting_collection_changed = $false
         $schedule_changed = $false
 
-        # Always resolve current refresh type string so it is available for schedule comparison
         $current_rt_str = ConvertFrom-CMRefreshType -value ([int]$existing_dc.RefreshType)
 
         if (-not [string]::IsNullOrEmpty($limiting_collection_name) -and
@@ -473,10 +455,8 @@ elseif ($state -eq 'present') {
             $refresh_type_changed = $true
         }
 
-        # Effective refresh type after any pending change
         $effective_rt = if (-not [string]::IsNullOrEmpty($refresh_type)) { $refresh_type } else { $current_rt_str }
 
-        # Compare schedule parameters when the user supplied them and the effective type supports a schedule
         if ($has_schedule -and ($effective_rt -eq 'Periodic' -or $effective_rt -eq 'Both')) {
             $sched = @($existing_dc.RefreshSchedule)[0]
 
@@ -484,7 +464,6 @@ elseif ($state -eq 'present') {
                 $schedule_changed = $true
             }
             else {
-                # Map existing span properties back to interval unit and count
                 $current_interval = $null
                 $current_count = 0
                 if ([int]$sched.DaySpan -gt 0) {
@@ -504,7 +483,6 @@ elseif ($state -eq 'present') {
                     $schedule_changed = $true
                 }
 
-                # Compare start time at minute precision
                 $current_start_dt = $null
                 $start_raw = $sched.StartTime
                 if (-not [string]::IsNullOrEmpty($start_raw)) {
@@ -563,7 +541,6 @@ elseif ($state -eq 'present') {
             }
         }
 
-        # Sync membership rules (collection always exists here)
         if ($null -ne $dc_query_rules -or $null -ne $dc_direct_rules) {
             Sync-CollectionRule -module $module -collectionName $name `
                 -desiredQueryRules $dc_query_rules -desiredDirectRules $dc_direct_rules `
@@ -593,7 +570,6 @@ elseif ($state -eq 'present') {
                 is_built_in = [bool]$existing_dc.IsBuiltIn
             }
             if ($null -ne $dc_query_rules -or $null -ne $dc_direct_rules) {
-                # Show desired (post-apply predicted) rules
                 $chk_query_rules = @()
                 if ($null -ne $dc_query_rules) {
                     $chk_query_rules = @(
@@ -614,7 +590,6 @@ elseif ($state -eq 'present') {
                 $module.result.device_collection.device_collection_direct_rules = $chk_direct_rules
             }
             else {
-                # Rules not being managed - show current state
                 $rules = Format-CollectionRulesResult -module $module -collectionName $name
                 $module.result.device_collection.device_collection_query_rules = $rules.device_collection_query_rules
                 $module.result.device_collection.device_collection_direct_rules = $rules.device_collection_direct_rules
