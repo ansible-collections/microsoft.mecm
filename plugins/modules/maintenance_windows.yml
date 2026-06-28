@@ -8,11 +8,6 @@ DOCUMENTATION:
   description:
     - Creates, updates, or removes a Maintenance Window on a Device Collection in a Configuration Manager site.
     - The target Device Collection must already exist; the module fails if it does not.
-    - A recurring weekly schedule is built with C(New-CMSchedule) using the schedule parameters.
-    - For idempotency the module decodes the stored schedule token with C(Convert-CMSchedule) and compares
-      it field-by-field against the requested values, along with the C(apply_to) type.
-    - Uses C(New-CMMaintenanceWindow), C(Set-CMMaintenanceWindow), C(Remove-CMMaintenanceWindow),
-      C(Get-CMMaintenanceWindow), C(New-CMSchedule), and C(Convert-CMSchedule) cmdlets.
   version_added: "1.1.0"
   extends_documentation_fragment:
     - microsoft.mecm.uses_cm_ps_module
@@ -33,7 +28,7 @@ DOCUMENTATION:
       description:
         - Whether the Maintenance Window should exist or be removed.
         - V(present) creates or updates the window to match the requested parameters.
-        - V(absent) removes the window if it exists; no-op when it does not.
+        - V(absent) removes the window if it exists
       type: str
       choices:
         - present

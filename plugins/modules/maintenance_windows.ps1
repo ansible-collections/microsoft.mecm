@@ -5,33 +5,7 @@
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
 #AnsibleRequires -PowerShell ..module_utils._CMPsSetupUtils
-
-
-$SERVICE_WINDOW_TYPE_MAP = @{
-    1 = 'Any'
-    4 = 'SoftwareUpdatesOnly'
-    5 = 'TaskSequencesOnly'
-}
-
-
-function Format-MaintenanceWindowResult {
-    param (
-        [Parameter(Mandatory = $true)][object]$mw
-    )
-    $type_int = [int]$mw.ServiceWindowType
-    $apply_to_str = $SERVICE_WINDOW_TYPE_MAP[$type_int]
-    if (-not $apply_to_str) {
-        $apply_to_str = $type_int.ToString()
-    }
-    return @{
-        name = $mw.Name
-        service_window_id = $mw.ServiceWindowID.ToString()
-        is_enabled = [bool]$mw.IsEnabled
-        apply_to = $apply_to_str
-        duration = [int]$mw.Duration
-        service_window_schedules = $mw.ServiceWindowSchedules
-    }
-}
+#AnsibleRequires -PowerShell ..module_utils._MaintenanceWindowUtils
 
 
 $spec = @{
@@ -109,7 +83,7 @@ if ($null -eq $collection) {
 }
 $collection_id = $collection.CollectionID
 
-$existing_mw = Get-CMMaintenanceWindow -CollectionID $collection_id -Name $name -ErrorAction SilentlyContinue
+$existing_mw = Get-CMMaintenanceWindow -CollectionID $collection_id -MaintenanceWindowName $name -DisableWildcardHandling -ErrorAction SilentlyContinue
 
 if ($state -eq 'absent') {
     if ($null -ne $existing_mw) {
@@ -167,7 +141,8 @@ elseif ($state -eq 'present') {
         $module.result.changed = $true
 
         if (-not $module.CheckMode) {
-            $created_mw = Get-CMMaintenanceWindow -CollectionID $collection_id -Name $name -ErrorAction SilentlyContinue
+            $created_mw = Get-CMMaintenanceWindow -CollectionID $collection_id -MaintenanceWindowName $name `
+                -DisableWildcardHandling -ErrorAction SilentlyContinue
             if ($null -ne $created_mw) {
                 $module.result.maintenance_window = Format-MaintenanceWindowResult -mw $created_mw
             }
@@ -183,7 +158,7 @@ elseif ($state -eq 'present') {
     else {
         $needs_update = $false
         $existing_type_int = [int]$existing_mw.ServiceWindowType
-        $desired_type_int = ($SERVICE_WINDOW_TYPE_MAP.GetEnumerator() | Where-Object { $_.Value -eq $apply_to } | Select-Object -First 1).Key
+        $desired_type_int = ConvertTo-ServiceWindowTypeInt -ApplyTo $apply_to
         if ($existing_type_int -ne $desired_type_int) {
             $needs_update = $true
         }
@@ -217,7 +192,7 @@ elseif ($state -eq 'present') {
         }
 
         if (-not $module.CheckMode) {
-            $final_mw = Get-CMMaintenanceWindow -CollectionID $collection_id -Name $name -ErrorAction SilentlyContinue
+            $final_mw = Get-CMMaintenanceWindow -CollectionID $collection_id -MaintenanceWindowName $name -DisableWildcardHandling -ErrorAction SilentlyContinue
             if ($null -ne $final_mw) {
                 $module.result.maintenance_window = Format-MaintenanceWindowResult -mw $final_mw
             }

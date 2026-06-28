@@ -5,33 +5,7 @@
 
 #AnsibleRequires -CSharpUtil Ansible.Basic
 #AnsibleRequires -PowerShell ..module_utils._CMPsSetupUtils
-
-
-$SERVICE_WINDOW_TYPE_MAP = @{
-    1 = 'Any'
-    4 = 'SoftwareUpdatesOnly'
-    5 = 'TaskSequencesOnly'
-}
-
-
-function Format-MaintenanceWindowInfo {
-    param (
-        [Parameter(Mandatory = $true)][object]$mw
-    )
-    $type_int = [int]$mw.ServiceWindowType
-    $apply_to_str = $SERVICE_WINDOW_TYPE_MAP[$type_int]
-    if (-not $apply_to_str) {
-        $apply_to_str = $type_int.ToString()
-    }
-    return @{
-        name = $mw.Name
-        service_window_id = $mw.ServiceWindowID.ToString()
-        is_enabled = [bool]$mw.IsEnabled
-        apply_to = $apply_to_str
-        duration = [int]$mw.Duration
-        service_window_schedules = $mw.ServiceWindowSchedules
-    }
-}
+#AnsibleRequires -PowerShell ..module_utils._MaintenanceWindowUtils
 
 
 $spec = @{
@@ -64,7 +38,7 @@ $collection_id = $collection.CollectionID
 if (-not [string]::IsNullOrEmpty($name)) {
     # Retrieve a single named maintenance window.
     try {
-        $mws = @(Get-CMMaintenanceWindow -CollectionID $collection_id -Name $name -ErrorAction Stop)
+        $mws = @(Get-CMMaintenanceWindow -CollectionID $collection_id -MaintenanceWindowName $name -DisableWildcardHandling -ErrorAction Stop)
     }
     catch {
         $module.FailJson(
@@ -93,7 +67,7 @@ else {
 
 foreach ($mw in $mws) {
     if ($null -eq $mw) { continue }
-    $module.result.maintenance_windows += Format-MaintenanceWindowInfo -mw $mw
+    $module.result.maintenance_windows += Format-MaintenanceWindowResult -mw $mw
 }
 
 $module.ExitJson()
