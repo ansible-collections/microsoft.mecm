@@ -10,8 +10,6 @@ $spec = @{
     options = @{
         wait_for_completion = @{ required = $false; type = "bool"; default = $true }
         timeout_minutes = @{ required = $false; type = "int"; default = 60 }
-        allow_reboot = @{ required = $false; type = "bool"; default = $false }
-        reboot_timeout_minutes = @{ required = $false; type = "int"; default = 15 }
         update_ids = @{ required = $false; type = "list"; elements = "str" }
         categories = @{ required = $false; type = "list"; elements = "str" }
     }
@@ -23,8 +21,6 @@ $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 # ---- Parameters ----
 $waitForCompletion = $module.Params.wait_for_completion
 $timeoutMinutes = $module.Params.timeout_minutes
-$allowReboot = $module.Params.allow_reboot
-$rebootTimeoutMinutes = $module.Params.reboot_timeout_minutes
 $updateIds = $module.Params.update_ids
 $categories = $module.Params.categories
 
@@ -34,10 +30,6 @@ $module.Result.changed = $false
 
 if ($timeoutMinutes -lt 0) {
     $module.FailJson("timeout_minutes must be greater than or equal to 0")
-}
-
-if ($rebootTimeoutMinutes -lt 0) {
-    $module.FailJson("reboot_timeout_minutes must be greater than or equal to 0")
 }
 
 # ---- Helper Functions ----
@@ -116,7 +108,7 @@ Function Get-AvailableUpdate {
             }
         }
 
-        return $allUpdates
+        return @($allUpdates | Where-Object { $null -ne $_ })
     }
     catch {
         $module.FailJson("Failed to retrieve available updates: $($_.Exception.Message)")
@@ -130,7 +122,7 @@ Function ConvertTo-SnakeCaseUpdate {
         name = $update.Name
         article_id = $update.ArticleID
         update_id = $update.UpdateID
-        reboot_required = [bool]$update.RebootRequired
+        reboot_required = $update.EvaluationState -in @(8, 9, 10)
     }
 }
 
@@ -153,27 +145,28 @@ Function Get-UpdateEvaluationState {
 
         if ($currentState) {
             switch ($currentState.EvaluationState) {
-                3 {
-                    # Successfully installed
-                    $installed += $originalUpdate
+                12 {
+                    # InstallComplete - successfully installed, no reboot needed
+                    $installed += $currentState
                 }
-                7 {
-                    # Installed, pending reboot
-                    $installed += $originalUpdate
+                { $_ -in @(8, 9, 10) } {
+                    # PendingSoftReboot / PendingHardReboot / WaitReboot
+                    $installed += $currentState
                     $rebootRequired = $true
                 }
-                14 {
-                    # Installed, pending soft reboot
-                    $installed += $originalUpdate
-                    $rebootRequired = $true
-                }
-                { $checkInProgress -and ($_ -in @(6, 11, 12, 13)) } {
-                    # Still installing/downloading
-                    $inProgress = $true
+                13 {
+                    # Error
+                    $failed += $currentState
                 }
                 default {
-                    # Failed or unknown state
-                    $failed += $originalUpdate
+                    # Any non-terminal state (0-7, 11, 14+): still in progress after trigger.
+                    # When checkInProgress=false (timeout path), treat as not yet installed.
+                    if ($checkInProgress) {
+                        $inProgress = $true
+                    }
+                    else {
+                        $failed += $originalUpdate
+                    }
                 }
             }
         }
@@ -252,9 +245,9 @@ $availableUpdates = Get-AvailableUpdate -updateIds $updateIds -categories $categ
 if ($availableUpdates.Count -eq 0) {
     $module.Result.installed_updates = @()
     $module.Result.failed_updates = @()
-    $module.Result.reboot_required = Test-RebootRequired
+    $module.Result.reboot_required = $false
     $module.Result.timeout_occurred = $false
-    $module.Result.total_updates_processed = 0
+    $module.Result.total_updates_installed = 0
     $module.Result.installation_duration = 0
     $module.Result.message = "No updates available for installation"
     $module.ExitJson()
@@ -264,7 +257,7 @@ if ($availableUpdates.Count -eq 0) {
 $startTime = Get-Date
 try {
     $managerClass = Get-CimClass -Namespace "root\ccm\ClientSDK" -ClassName "CCM_SoftwareUpdatesManager"
-    $installResult = Invoke-CimMethod -CimClass $managerClass -MethodName "InstallUpdates" -Arguments @{ CCMUpdates = $availableUpdates }
+    $installResult = Invoke-CimMethod -CimClass $managerClass -MethodName "InstallUpdates" -Arguments @{ CCMUpdates = [CimInstance[]]$availableUpdates }
 
     if ($installResult.ReturnValue -ne 0) {
         $module.FailJson("Failed to trigger update installation. Return code: $($installResult.ReturnValue)")
@@ -282,33 +275,17 @@ if ($waitForCompletion) {
     $timeoutSeconds = $timeoutMinutes * 60
     $completionResult = Wait-ForInstallationCompletion -updatesToMonitor $availableUpdates -timeoutSeconds $timeoutSeconds -module $module
 
-    $module.Result.installed_updates = $completionResult.installed_updates | ForEach-Object { ConvertTo-SnakeCaseUpdate -update $_ }
-    $module.Result.failed_updates = $completionResult.failed_updates | ForEach-Object { ConvertTo-SnakeCaseUpdate -update $_ }
+    $module.Result.installed_updates = @($completionResult.installed_updates | ForEach-Object { ConvertTo-SnakeCaseUpdate -update $_ })
+    $module.Result.failed_updates = @($completionResult.failed_updates | ForEach-Object { ConvertTo-SnakeCaseUpdate -update $_ })
     $module.Result.reboot_required = $completionResult.reboot_required
     $module.Result.timeout_occurred = $completionResult.timeout_occurred
-    $module.Result.total_updates_processed = $availableUpdates.Count
+    $module.Result.total_updates_installed = @($completionResult.installed_updates).Count
     $module.Result.installation_duration = [int]((Get-Date) - $startTime).TotalSeconds
-
-    # Handle reboot if required and allowed
-    if ($completionResult.reboot_required -and $allowReboot) {
-        $module.Result.message = "Updates installed successfully. System reboot initiated."
-        try {
-            # Use Windows reboot with timeout
-            Restart-Computer -Force -Timeout ($rebootTimeoutMinutes * 60)
-
-        }
-        catch {
-            $module.Result.warnings = @("Failed to initiate reboot: $($_.Exception.Message)")
-
-        }
-    }
-    elseif ($completionResult.reboot_required) {
-        $module.Result.message = "Updates installed successfully. System reboot required but not allowed by allow_reboot parameter."
-
+    if ($completionResult.reboot_required) {
+        $module.Result.message = "Updates installed successfully. System reboot is required."
     }
     else {
         $module.Result.message = "Updates installed successfully. No reboot required."
-
     }
 
 }
@@ -318,7 +295,7 @@ else {
     $module.Result.failed_updates = @()
     $module.Result.reboot_required = $false
     $module.Result.timeout_occurred = $false
-    $module.Result.total_updates_processed = $availableUpdates.Count
+    $module.Result.total_updates_installed = 0
     $module.Result.installation_duration = [int]((Get-Date) - $startTime).TotalSeconds
     $module.Result.message = "Update installation triggered. Use wait_for_completion=true to monitor progress."
 

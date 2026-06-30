@@ -27,8 +27,8 @@
     that:
       - no_updates_result is not failed
       - no_updates_result.changed is defined
-      - no_updates_result.total_updates_processed is defined
-      - no_updates_result.total_updates_processed is number
+      - no_updates_result.total_updates_installed is defined
+      - no_updates_result.total_updates_installed is number
       - no_updates_result.installation_duration is defined
       - no_updates_result.installation_duration is number
       - no_updates_result.message is defined
@@ -54,8 +54,8 @@
       - wait_no_updates_result.reboot_required is boolean
       - wait_no_updates_result.timeout_occurred is defined
       - wait_no_updates_result.timeout_occurred is boolean
-      - wait_no_updates_result.total_updates_processed is defined
-      - wait_no_updates_result.total_updates_processed is number
+      - wait_no_updates_result.total_updates_installed is defined
+      - wait_no_updates_result.total_updates_installed is number
       - wait_no_updates_result.installation_duration is defined
       - wait_no_updates_result.installation_duration is number
     fail_msg: "Wait-for-completion mode should return full result structure"
@@ -83,7 +83,7 @@
   assert:
     that:
       - empty_ids_result is not failed
-      - empty_ids_result.total_updates_processed >= 0
+      - empty_ids_result.total_updates_installed >= 0
     fail_msg: "Empty update IDs should not cause failure"
 
 - name: Test categories parameter
@@ -97,23 +97,8 @@
   assert:
     that:
       - categories_result is not failed
-      - categories_result.total_updates_processed >= 0
+      - categories_result.total_updates_installed >= 0
     fail_msg: "Categories filtering should work without errors"
-
-- name: Test reboot parameter combinations
-  microsoft.mecm.install_updates:
-    allow_reboot: false
-    reboot_timeout_minutes: 5
-    wait_for_completion: true
-    timeout_minutes: 2
-  register: reboot_config_result
-
-- name: Verify reboot configuration
-  assert:
-    that:
-      - reboot_config_result is not failed
-      - reboot_config_result.reboot_required is boolean
-    fail_msg: "Reboot configuration should be handled properly"
 
 - name: Display test results summary
   debug:
@@ -124,10 +109,9 @@
       - Parameter validation: {{ 'PASS' if invalid_timeout_result.failed else 'FAIL' }}
       - Update IDs filtering: {{ 'PASS' if not empty_ids_result.failed else 'FAIL' }}
       - Categories filtering: {{ 'PASS' if not categories_result.failed else 'FAIL' }}
-      - Reboot configuration: {{ 'PASS' if not reboot_config_result.failed else 'FAIL' }}
 
       Module Behavior Analysis:
-      - Updates processed: {{ wait_no_updates_result.total_updates_processed }}
+      - Updates processed: {{ wait_no_updates_result.total_updates_installed }}
       - Reboot required: {{ wait_no_updates_result.reboot_required }}
       - Execution time: {{ wait_no_updates_result.installation_duration }}s
 
@@ -186,7 +170,7 @@
           Performance Metrics:
           - Total execution time: {{ perf_execution_time }}s
           - Module reported duration: {{ perf_result.installation_duration }}s
-          - Updates processed: {{ perf_result.total_updates_processed }}
+          - Updates processed: {{ perf_result.total_updates_installed }}
           - Performance: {{ 'ACCEPTABLE' if perf_execution_time | int < 60 else 'SLOW' }}
 
 - name: Comprehensive result validation
@@ -195,7 +179,7 @@
       # Basic structure validation
       - wait_no_updates_result.installed_updates | length >= 0
       - wait_no_updates_result.failed_updates | length >= 0
-      - wait_no_updates_result.total_updates_processed >= 0
+      - wait_no_updates_result.total_updates_installed >= 0
       - wait_no_updates_result.installation_duration >= 0
 
       # Type validation
@@ -204,7 +188,7 @@
       - wait_no_updates_result.changed is boolean
 
       # Logical validation
-      - (wait_no_updates_result.installed_updates | length) + (wait_no_updates_result.failed_updates | length) <= wait_no_updates_result.total_updates_processed
+      - wait_no_updates_result.total_updates_installed == (wait_no_updates_result.installed_updates | length)
 
     fail_msg: "Module return values should be consistent and properly typed"
 
