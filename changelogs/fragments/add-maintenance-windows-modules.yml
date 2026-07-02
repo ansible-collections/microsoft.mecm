@@ -1,8 +1,0 @@
----
-minor_changes:
-  - "maintenance_windows - Add new module to create, update, or delete Maintenance Windows on a
-    Device Collection in MECM, supporting None and Daily recurrence schedules, all three
-    C(apply_to) types, and full idempotency."
-  - "maintenance_windows_info - Add new module to retrieve Maintenance Window information for a
-    Device Collection in MECM, returning all windows or a single named window with its schedule
-    token, duration, C(apply_to) type, and enabled state."

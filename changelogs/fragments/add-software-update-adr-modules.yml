@@ -1,6 +1,0 @@
----
-minor_changes:
-  - "software_update_adr - Add new module to create, update, or delete Software Update Auto Deployment Rules (ADRs) in MECM 
-    With full idempotency across filters, deployment options, run type, and schedule."
-  - "software_update_adr_info - Add new module to retrieve Software Update Auto Deployment Rule information from MECM, 
-    Including enabled state, run type, and collection assignment."

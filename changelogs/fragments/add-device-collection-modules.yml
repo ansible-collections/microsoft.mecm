@@ -1,8 +1,0 @@
----
-minor_changes:
-  - "device_collection - Add new module to create, update, or delete Device Collections in MECM,
-    including support for manual, periodic, continuous, and both refresh types with configurable
-    schedules, and management of query and direct membership rules via
-    C(device_collection_query_rules) and C(device_collection_direct_rules)."
-  - "device_collection_info - Add new module to retrieve Device Collection information from MECM,
-    including collection properties and all configured query and direct membership rules."

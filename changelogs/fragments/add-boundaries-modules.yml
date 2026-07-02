@@ -1,5 +1,0 @@
----
-minor_changes:
-  - "boundaries - Add new module to create, rename, or delete site boundaries in Microsoft Endpoint Configuration Manager (MECM) 
-    with full idempotency support for IPSubnet, ADSite, IPV6Prefix, IPRange, and VPN boundary types."
-  - "boundaries_info - Add new module to retrieve site boundary information from MECM, with optional filtering by boundary type or display name."

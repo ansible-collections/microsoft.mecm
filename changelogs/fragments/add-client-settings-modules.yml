@@ -1,5 +1,0 @@
----
-minor_changes:
-  - "client_settings - Add new module to create, update, and delete MECM client settings of type device or user, 
-    with support for priority, description, and custom settings configuration."
-  - "client_settings_info - Add new module to retrieve MECM client settings information, with optional filtering by name."

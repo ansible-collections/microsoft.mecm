@@ -1,8 +1,0 @@
----
-minor_changes:
-  - "application_deployments - Add new module to create, update, or delete application deployments
-    in MECM. Supports C(deploy_action) (Install/Uninstall) and C(deploy_purpose) (Required/Available),
-    optional content distribution via a distribution point group."
-  - "application_deployments_info - Add new info module to retrieve application deployment
-    information from MECM. Supports filtering site-wide, by application name, or by both
-    application name and collection name."

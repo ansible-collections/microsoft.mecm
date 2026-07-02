@@ -1,7 +1,0 @@
----
-minor_changes:
-  - "distribution_point_group - Add new module to create, update, or delete Distribution Point
-    Groups in MECM, including idempotent membership reconciliation (add/remove DPs) and group
-    rename support via C(new_name)."
-  - "distribution_point_group_info - Add new module to retrieve Distribution Point Group
-    information from MECM, including member distribution point FQDNs for each group."
