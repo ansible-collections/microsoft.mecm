@@ -1,6 +1,0 @@
----
-minor_changes:
-  - "task_sequence - Add new module to create, import, update, or delete a Task Sequence in MECM,
-    supporting C(create_method=import) and C(create_method=custom)"
-  - "task_sequence_info - Add new info module to retrieve Task Sequence information from MECM,
-    supporting system-wide listing or filtering by name."

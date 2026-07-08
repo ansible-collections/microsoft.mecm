@@ -1,8 +1,64 @@
-====================================================
-CHANGE THIS IN changelogs/config.yaml! Release Notes
-====================================================
+=================================================================================
+Microsoft Endpoint Configuration Manager (MECM) Ansible Collection. Release Notes
+=================================================================================
 
 .. contents:: Topics
+
+v2.0.0
+======
+
+Release Summary
+---------------
+
+Expansion of Microsoft.MECM for Unified Endpoint Management
+
+Minor Changes
+-------------
+
+- application - Add new module to create, update, or delete applications in Microsoft Endpoint Configuration Manager (MECM).
+- application_deployment_type - Add new module to add or remove MSI and Script deployment types on MECM applications.
+- application_deployment_type_info - Add new module to retrieve deployment type information from MECM applications.
+- application_deployments - Add new module to create, update, or delete application deployments in MECM. Supports C(deploy_action) (Install/Uninstall) and C(deploy_purpose) (Required/Available), optional content distribution via a distribution point group.
+- application_deployments_info - Add new info module to retrieve application deployment information from MECM. Supports filtering site-wide, by application name, or by both application name and collection name.
+- application_info - Add new module to retrieve application information from MECM including metadata, ownership, and Software Center display properties.
+- boundaries - Add new module to create, rename, or delete site boundaries in Microsoft Endpoint Configuration Manager (MECM) with full idempotency support for IPSubnet, ADSite, IPV6Prefix, IPRange, and VPN boundary types.
+- boundaries, boundaries_info - Extract shared C(Format-BoundaryResult) and C(ConvertTo-BoundaryTypeInt) into a new C(module_utils/_BoundaryUtils.psm1) to eliminate code duplication.
+- boundaries_info - Add new module to retrieve site boundary information from MECM, with optional filtering by boundary type or display name.
+- client_settings - Add new module to create, update, and delete MECM client settings of type device or user, with support for priority, description, and custom settings configuration.
+- client_settings, client_settings_info - Extract shared C(Format-ClientSettingResult) and C(ConvertTo-ClientSettingTypeString) into a new C(module_utils/_ClientSettingUtils.psm1) to eliminate code duplication.
+- client_settings_info - Add new module to retrieve MECM client settings information, with optional filtering by name.
+- device_collection - Add new module to create, update, or delete Device Collections in MECM, including support for manual, periodic, continuous, and both refresh types with configurable schedules, and management of query and direct membership rules via C(device_collection_query_rules) and C(device_collection_direct_rules).
+- device_collection, device_collection_info - Extract shared C(ConvertFrom-CMRefreshType) into a new C(module_utils/_DeviceCollectionUtils.psm1) to eliminate code duplication.
+- device_collection_info - Add new module to retrieve Device Collection information from MECM, including collection properties and all configured query and direct membership rules.
+- distribution_point_group - Add new module to create, update, or delete Distribution Point Groups in MECM, including idempotent membership reconciliation (add/remove DPs) and group rename support via C(new_name).
+- distribution_point_group_info - Add new module to retrieve Distribution Point Group information from MECM, including member distribution point FQDNs for each group.
+- maintenance_windows - Add new module to create, update, or delete Maintenance Windows on a Device Collection in MECM, supporting None and Daily recurrence schedules, all three C(apply_to) types, and full idempotency.
+- maintenance_windows, maintenance_windows_info - Extract shared C(Format-MaintenanceWindowResult) and C(ConvertTo-ServiceWindowTypeInt) into a new C(module_utils/_MaintenanceWindowUtils.psm1) to eliminate code duplication.
+- maintenance_windows_info - Add new module to retrieve Maintenance Window information for a Device Collection in MECM, returning all windows or a single named window with its schedule token, duration, C(apply_to) type, and enabled state.
+- software_update_adr - Add new module to create, update, or delete Software Update Auto Deployment Rules (ADRs) in MECM With full idempotency across filters, deployment options, run type, and schedule.
+- software_update_adr_info - Add new module to retrieve Software Update Auto Deployment Rule information from MECM, Including enabled state, run type, and collection assignment.
+- task_sequence - Add new module to create, import, update, or delete a Task Sequence in MECM, supporting C(create_method=import) and C(create_method=custom)
+- task_sequence_info - Add new info module to retrieve Task Sequence information from MECM, supporting system-wide listing or filtering by name.
+
+Breaking Changes / Porting Guide
+--------------------------------
+
+- install_updates - Remove O(allow_reboot) and O(reboot_timeout_minutes) parameters. The module no longer reboots the system itself; instead it returns RV(reboot_required=true) and the caller is expected to handle the reboot using M(ansible.windows.win_reboot). This avoids dropping the WinRM connection mid-task before results are returned.
+
+Bugfixes
+--------
+
+- device_collection - Remove incorrect C(default: Manual) documentation field from C(refresh_type); the parameter has no spec-level default and the conditional creation behaviour is already described in the option description.
+- dp_status_info - Fix C(distribution_point) and C(distribution_point_group) filters returning no results; per-DP status is now queried via C(SMS_PackageStatusDistPointsSummarizer) over local CIM, which works correctly for group-distributed content and avoids WinRM double-hop authentication failures.
+- dp_status_info - Fix C(distribution_point_group) with a non-existent or empty group returning all records instead of an empty list.
+- dp_status_info - Fix empty results for package-only and site-wide queries by replacing broken C(Get-CMDistributionStatus -InputObject $dp) calls with C(-PackageId) and bare invocations that match how the cmdlet is designed to be used.
+- install_updates - Fix C(Unable to cast object of type 'Microsoft.Management.Infrastructure.Native.InstanceHandle' to type 'System.Collections.IList') error when calling C(CCM_SoftwareUpdatesManager.InstallUpdates). The C(CCMUpdates) argument is now explicitly cast to C([CimInstance[]]) so the CIM infrastructure marshals the collection as a typed array that satisfies the IList contract expected by the native WMI method.
+- install_updates - Fix RV(installed_updates) and RV(failed_updates) returning V(null) or a bare dict instead of a list. C(ForEach-Object) over an empty array returns C(null) in PowerShell; results are now wrapped in C(@()) to guarantee a JSON array is always returned.
+- install_updates - Fix RV(installed_updates[].reboot_required) always reporting V(false) regardless of post-installation state. The C(RebootRequired) WMI property is unreliable after installation; the field is now derived from C(EvaluationState) directly: states C(8) (PendingSoftReboot), C(9) (PendingHardReboot), and C(10) (WaitReboot) map to V(true), all other terminal states map to V(false).
+- install_updates - Fix RV(reboot_required) returning V(true) on idempotent re-runs where V(changed=false). When no updates are available the module now returns RV(reboot_required=false) instead of checking the Windows registry, keeping the return value scoped to what the current invocation actually did.
+- install_updates - Fix RV(total_updates_installed) returning V(null) when only one update matches the filter. C(Where-Object) returns a scalar C(CimInstance) (not an array) for single-item results; C(Get-AvailableUpdate) now wraps its return value in C(@()) and filters nulls to ensure C(.Count) always resolves correctly.
+- install_updates - Fix module returning immediately without waiting when O(wait_for_completion=true). Incorrect C(EvaluationState) mappings caused states such as C(7) (Installing) and C(0/1) (Available, seen immediately after triggering) to be classified as terminal failures, setting C(in_progress=false) and exiting the polling loop on the first iteration. All non-terminal states now correctly set C(in_progress=true) so the loop waits until installation completes.
+- maintenance_windows_info - Fix C(name) filter returning all maintenance windows instead of the named one by switching from the C(-Name) alias to the canonical C(-MaintenanceWindowName) parameter and adding C(-DisableWildcardHandling) to prevent wildcard interpretation of the window name. Same fix applied to the three lookup calls in C(maintenance_windows).
 
 v1.0.0
 ======

@@ -1,6 +1,4 @@
-# -*- coding: utf-8 -*-
-
-# Copyright (c) 2020 Ansible Project
+# Copyright (c) 2026 Ansible Project
 # GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
 
 from __future__ import (absolute_import, division, print_function)
@@ -8,9 +6,9 @@ __metaclass__ = type
 
 
 class ModuleDocFragment:
+    """Common documentation for modules that use the Configuration Manager PowerShell module."""
 
-    # Common documentation for modules that use the Configuration Manager PowerShell module
-    DOCUMENTATION = r'''
+    DOCUMENTATION = r"""
 notes:
     - This module requires the Configuration Manager PowerShell module to be installed on the target host.
       You can install it directly, or install the Configuration Manager Console on the target host.
@@ -30,4 +28,4 @@ options:
             - The site code of the site for which you want to perform the action.
         type: str
         required: true
-'''
+"""

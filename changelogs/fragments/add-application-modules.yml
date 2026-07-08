@@ -1,4 +1,0 @@
----
-minor_changes:
-  - "application - Add new module to create, update, or delete applications in Microsoft Endpoint Configuration Manager (MECM)."
-  - "application_info - Add new module to retrieve application information from MECM including metadata, ownership, and Software Center display properties."
