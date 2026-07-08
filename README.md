@@ -1,5 +1,5 @@
 # Microsoft MECM Collection for Ansible
-[![CI](https://github.com/ansible-collections/microsoft.mecm/workflows/CI/badge.svg?event=push)](https://github.com/ansible-collections/microsoft.mecm/actions) [![Codecov](https://img.shields.io/codecov/c/github/ansible-collections/microsoft.mecm)](https://codecov.io/gh/ansible-collections/microsoft.mecm)
+[![CI](https://github.com/ansible-collections/microsoft.mecm/workflows/CI/badge.svg?event=push)](https://github.com/ansible-collections/microsoft.mecm/actions)
 
 This collection provides Ansible modules and plugins to manage Microsoft System Center Configuration Manager (MECM/SCCM/ConfigMgr) infrastructure through automation.
 
@@ -26,25 +26,25 @@ Configuration Manager management into broader infrastructure-as-code pipelines.
 
 Before using this collection, you need to install it with the Ansible Galaxy command-line tool:
 ```bash
-ansible-galaxy collection install ansible.microsoft.mecm
+ansible-galaxy collection install microsoft.mecm
 ```
 
 You can also include it in a `requirements.yml` file and install it with `ansible-galaxy collection install -r requirements.yml`, using the format:
 ```yaml
 ---
 collections:
-  - name: ansible.microsoft.mecm
+  - name: microsoft.mecm
 ```
 
 Note that if you install the collection from Ansible Galaxy, it will not be upgraded automatically when you upgrade the `ansible` package. To upgrade the collection to the latest available version, run the following command:
 ```bash
-ansible-galaxy collection install ansible.microsoft.mecm --upgrade
+ansible-galaxy collection install microsoft.mecm --upgrade
 ```
 
 You can also install a specific version of the collection, for example, if you need to downgrade when something is broken in the latest version (please report an issue in this repository). Use the following syntax to install version `0.1.0`:
 
 ```bash
-ansible-galaxy collection install ansible.microsoft.mecm:==0.1.0
+ansible-galaxy collection install microsoft.mecm:==0.1.0
 ```
 
 See [using Ansible collections](https://docs.ansible.com/ansible/devel/user_guide/collections_using.html) for more details.
@@ -220,8 +220,6 @@ If you encounter abusive behavior, please refer to the [policy violations](https
 
 * Join the Ansible forum:
   * [Get Help](https://forum.ansible.com/c/help/6): get help or help others. Please add appropriate tags if you start new discussions, for example the `microsoft` and `mecm` tags.
-  * [Posts tagged with 'microsoft'](https://forum.ansible.com/tag/microsoft): subscribe to participate in Microsoft-related conversations.
-  * [Posts tagged with 'mecm'](https://forum.ansible.com/tag/mecm): subscribe to participate in MECM-related conversations.
   * [Social Spaces](https://forum.ansible.com/c/chat/4): gather and interact with fellow enthusiasts.
   * [News & Announcements](https://forum.ansible.com/c/news/5): track project-wide announcements including social events. The [Bullhorn newsletter](https://docs.ansible.com/ansible/devel/community/communication.html#the-bullhorn), which is used to announce releases and important changes, can also be found here.
 
@@ -231,7 +229,7 @@ For more information about communication, see the [Ansible communication guide](
 
 ## Collection maintenance
 
-The current maintainers are listed in the [MAINTAINERS](MAINTAINERS) file. If you have questions or need help, feel free to mention them in the proposals.
+If you have questions or need help, feel free to mention the maintainers in the proposals.
 
 To learn how to maintain/become a maintainer of this collection, refer to the [Maintainer guidelines](https://docs.ansible.com/ansible/devel/community/maintainers.html).
 
@@ -246,19 +244,6 @@ They also should be subscribed to Ansible's [The Bullhorn newsletter](https://do
 
 The process of decision making in this collection is based on discussing and finding consensus among participants.
 Every voice is important. If you have something on your mind, create an issue or dedicated discussion and let's discuss it!
-
-## Tested with Ansible
-
-
-## External requirements
-
-
-### Supported connections
-
-## Included content
-
-
-## Using this collection
 
 ## Related information
 

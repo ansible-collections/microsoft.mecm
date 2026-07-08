@@ -1,0 +1,8 @@
+---
+bugfixes:
+  - install_updates - replaced bare ``debug`` module usage in EXAMPLES with the fully-qualified ``ansible.builtin.debug`` module.
+  - README - removed orphaned Codecov badge pointing to an unconfigured repository
+  - README - removed broken link to a ``MAINTAINERS`` file.
+
+minor_changes:
+  - requirements.txt - added ``pywinrm`` as the controller-side Python requirement.
