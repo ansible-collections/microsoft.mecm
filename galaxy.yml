@@ -7,7 +7,8 @@ readme: README.md
 authors:
   - Ansible Ecosystem Engineering team (@eco-ansible-content)
 description: Ansible collection for managing Microsoft System Center Configuration Manager (MECM/SCCM/ConfigMgr)
-license_file: LICENSE
+license:
+  - "GPL-3.0-or-later"
 tags:
   - microsoft
   - mecm
@@ -22,15 +23,21 @@ issues: https://github.com/ansible-collections/microsoft.mecm/issues
 build_ignore:
   - .gitignore
   - .ansible-lint
+  - .flake8
   - .git
   - .github
   - .vscode
   - .ansible
-  - changelogs/.plugin-cache.yaml
-  - tests/integration/inventory.winrm
   - .claude
   - .cursor
-  - microsoft-mecm-*.tar.gz
-  - scripts
   - .pytest_cache
   - .ruff_cache
+  - changelogs/.plugin-cache.yaml
+  - tests/integration/inventory.winrm
+  - microsoft-mecm-*.tar.gz
+  - scripts
+  - Makefile
+  - CODEOWNERS
+  - CODE_OF_CONDUCT.md
+  - CONTRIBUTING.md
+  - REVIEW_CHECKLIST.md

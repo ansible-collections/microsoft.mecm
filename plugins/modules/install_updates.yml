@@ -51,8 +51,7 @@ DOCUMENTATION:
     - This module requires an active SCCM client with the CcmExec service running.
     - The module does not support check mode as update installation is not idempotent by nature.
     - "B(Performance): Large numbers of updates can take significant time - adjust timeout_minutes accordingly, Or install in batches"
-    - "B(Reboots): The module reports reboot_required but does not reboot the system. Use M(ansible.windows.win_reboot)
-      in your playbook to handle reboots safely."
+    - "B(Reboots): The module reports reboot_required. Use M(ansible.windows.win_reboot) in your playbook to handle reboots safely."
     - "B(Timeout Behavior): On timeout, the module returns partial results showing completed vs in-progress installations."
     - "B(Fire-and-Forget): When wait_for_completion=false, no installation results are provided as the operation is asynchronous."
   author:
@@ -99,13 +98,8 @@ EXAMPLES: |
         when: update_result.reboot_required
 
       - name: Report patching results
-        debug:
-          msg: |
-            Updates installed: {{ update_result.installed_updates | length }}
-            Updates failed: {{ update_result.failed_updates | length }}
-            Total installed: {{ update_result.total_updates_installed }}
-            Reboot required: {{ update_result.reboot_required }}
-            Installation duration: {{ update_result.installation_duration }}s
+        ansible.builtin.debug:
+          msg: "Installed: {{ update_result.total_updates_installed }}, reboot_required: {{ update_result.reboot_required }}"
 
 RETURN:
   installed_updates:
