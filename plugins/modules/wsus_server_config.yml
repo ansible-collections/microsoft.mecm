@@ -1,0 +1,141 @@
+---
+# Copyright: (c) 2026, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: wsus_server_config
+  short_description: Manage the configuration of a WSUS server
+  description:
+    - Manages the configuration of a Windows Server Update Services (WSUS) server using the
+      native WSUS Administration API.
+    - Manages the synchronization source, enabled update languages, targeting mode, automatic
+      synchronization schedule, and the enabled products and classifications.
+    - Every setting is optional and is only changed when its parameter is provided, so the module
+      makes the smallest change needed and is idempotent.
+    - This module does not trigger a synchronization run. Use M(microsoft.mecm.wsus_sync_status_info)
+      to inspect synchronization status.
+  version_added: "2.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_wsus_server
+  options:
+    sync_source:
+      description:
+        - Where the WSUS server synchronizes updates from.
+        - V(microsoft_update) synchronizes directly from Microsoft Update.
+        - V(upstream_server) synchronizes from another (upstream) WSUS server, configured with
+          O(upstream_server_name), O(upstream_server_port), and O(upstream_server_use_ssl).
+      type: str
+      choices:
+        - microsoft_update
+        - upstream_server
+      required: false
+    upstream_server_name:
+      description:
+        - The name of the upstream WSUS server to synchronize from.
+        - Required when O(sync_source=upstream_server).
+      type: str
+      required: false
+    upstream_server_port:
+      description:
+        - The port of the upstream WSUS server.
+        - Only used when O(sync_source=upstream_server).
+      type: int
+      required: false
+    upstream_server_use_ssl:
+      description:
+        - Whether to connect to the upstream WSUS server using SSL.
+        - Only used when O(sync_source=upstream_server).
+      type: bool
+      required: false
+    all_update_languages_enabled:
+      description:
+        - Whether updates for all languages are enabled.
+        - When V(false), only the languages listed in O(enabled_languages) are downloaded.
+      type: bool
+      required: false
+    enabled_languages:
+      description:
+        - The list of update language codes to enable, for example V(en) or V(fr).
+        - Typically used together with O(all_update_languages_enabled=false).
+      type: list
+      elements: str
+      required: false
+    products:
+      description:
+        - The desired set of enabled products, by title (for example V(Windows 10)).
+        - This is declarative. Products in the list are enabled and any product not in the list is
+          disabled. The module fails if a title does not exist on the WSUS server.
+      type: list
+      elements: str
+      required: false
+    classifications:
+      description:
+        - The desired set of enabled update classifications, by title (for example
+          V(Critical Updates)).
+        - This is declarative. Classifications in the list are enabled and any classification not in
+          the list is disabled. The module fails if a title does not exist on the WSUS server.
+      type: list
+      elements: str
+      required: false
+    synchronize_automatically:
+      description:
+        - Whether the WSUS server synchronizes automatically on a schedule.
+      type: bool
+      required: false
+    synchronize_time_of_day:
+      description:
+        - The time of day of the first automatic synchronization, in 24-hour HH:MM format.
+        - For example, V(00:00) for midnight or V(13:30) for 1:30 PM.
+      type: str
+      required: false
+    number_of_synchronizations_per_day:
+      description:
+        - The number of automatic synchronizations to perform each day.
+      type: int
+      required: false
+    targeting_mode:
+      description:
+        - How computers are assigned to target groups.
+        - V(Client) means computers assign themselves via Group Policy or the registry
+          (client-side targeting).
+        - V(Server) means computers are assigned manually in the WSUS console (server-side targeting).
+      type: str
+      choices:
+        - Client
+        - Server
+      required: false
+
+EXAMPLES: |
+  - name: Configure the local WSUS server to sync from Microsoft Update
+    microsoft.mecm.wsus_server_config:
+      sync_source: microsoft_update
+
+  - name: Configure a remote WSUS server end to end
+    microsoft.mecm.wsus_server_config:
+      server_name: "wsus.contoso.com"
+      port: 8531
+      use_ssl: true
+      sync_source: microsoft_update
+      all_update_languages_enabled: false
+      enabled_languages:
+        - en
+      targeting_mode: Client
+      products:
+        - "Windows 10"
+      classifications:
+        - "Critical Updates"
+        - "Security Updates"
+      synchronize_automatically: true
+      synchronize_time_of_day: "00:00"
+      number_of_synchronizations_per_day: 1
+
+  - name: Point a downstream WSUS server at an upstream server
+    microsoft.mecm.wsus_server_config:
+      sync_source: upstream_server
+      upstream_server_name: "upstream-wsus.contoso.com"
+      upstream_server_port: 8530
+      upstream_server_use_ssl: false
+
+# Null is needed for Galaxy/AH to not fall flat
+# https://github.com/ansible/ansible-hub-ui/blob/9b35b78f1f5c6a5ef2346d0470e431ba5f25d06b/src/components/render-plugin-doc.tsx#L226-L228
+RETURN: ~

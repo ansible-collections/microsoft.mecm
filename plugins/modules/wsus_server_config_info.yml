@@ -1,0 +1,131 @@
+---
+# Copyright: (c) 2026, Ansible Project
+# GNU General Public License v3.0+ (see COPYING or https://www.gnu.org/licenses/gpl-3.0.txt)
+
+DOCUMENTATION:
+  module: wsus_server_config_info
+  short_description: Retrieve the configuration of a WSUS server
+  description:
+    - Retrieves the configuration of a Windows Server Update Services (WSUS) server using the
+      native WSUS Administration API.
+    - Reports the synchronization source, enabled update languages, targeting mode, automatic
+      synchronization schedule, and the enabled products and classifications.
+    - This is a read-only module that does not make any changes to the WSUS server.
+  version_added: "2.1.0"
+  extends_documentation_fragment:
+    - microsoft.mecm.uses_wsus_server
+
+EXAMPLES: |
+  - name: Get the configuration of the local WSUS server
+    microsoft.mecm.wsus_server_config_info:
+    register: wsus_config
+
+  - name: Get the configuration of a remote WSUS server over SSL
+    microsoft.mecm.wsus_server_config_info:
+      server_name: "wsus.contoso.com"
+      port: 8531
+      use_ssl: true
+    register: wsus_config
+
+  - name: Display the WSUS synchronization source and schedule
+    ansible.builtin.debug:
+      msg: |
+        Sync source: {{ wsus_config.wsus_server_config.sync_source }}
+        Automatic sync: {{ wsus_config.wsus_server_config.synchronize_automatically }}
+        Enabled products: {{ wsus_config.wsus_server_config.enabled_products | join(', ') }}
+
+RETURN:
+  wsus_server_config:
+    description: The current configuration of the WSUS server.
+    returned: always
+    type: dict
+    contains:
+      server_name:
+        description: The name of the WSUS server.
+        returned: always
+        type: str
+        sample: "wsus.contoso.com"
+      port:
+        description: The port that the WSUS server listens on.
+        returned: always
+        type: int
+        sample: 8530
+      use_ssl:
+        description: Whether the connection to the WSUS server uses SSL.
+        returned: always
+        type: bool
+        sample: false
+      sync_source:
+        description: Where the WSUS server synchronizes updates from.
+        returned: always
+        type: str
+        choices: ["microsoft_update", "upstream_server"]
+        sample: "microsoft_update"
+      upstream_server_name:
+        description: The name of the upstream WSUS server, when synchronizing from an upstream server.
+        returned: always
+        type: str
+        sample: "upstream-wsus.contoso.com"
+      upstream_server_port:
+        description: The port of the upstream WSUS server.
+        returned: always
+        type: int
+        sample: 8530
+      upstream_server_use_ssl:
+        description: Whether the connection to the upstream WSUS server uses SSL.
+        returned: always
+        type: bool
+        sample: false
+      all_update_languages_enabled:
+        description: Whether updates for all languages are enabled.
+        returned: always
+        type: bool
+        sample: false
+      enabled_languages:
+        description:
+          - The list of enabled update language codes.
+          - Empty when all update languages are enabled.
+        returned: always
+        type: list
+        elements: str
+        sample:
+          - "en"
+      targeting_mode:
+        description:
+          - How computers are assigned to target groups.
+          - V(client) means computers assign themselves via Group Policy or the registry.
+          - V(server) means computers are assigned manually in the WSUS console.
+        returned: always
+        type: str
+        choices: ["client", "server"]
+        sample: "client"
+      synchronize_automatically:
+        description: Whether the WSUS server synchronizes automatically on a schedule.
+        returned: always
+        type: bool
+        sample: true
+      synchronize_time_of_day:
+        description: The time of day of the first automatic synchronization, in HH:MM format.
+        returned: always
+        type: str
+        sample: "00:00"
+      number_of_synchronizations_per_day:
+        description: The number of automatic synchronizations performed each day.
+        returned: always
+        type: int
+        sample: 1
+      enabled_products:
+        description: The titles of the products currently enabled for synchronization.
+        returned: always
+        type: list
+        elements: str
+        sample:
+          - "Windows 10"
+      enabled_classifications:
+        description: The titles of the update classifications currently enabled for synchronization.
+        returned: always
+        type: list
+        elements: str
+        sample:
+          - "Critical Updates"
+          - "Security Updates"
