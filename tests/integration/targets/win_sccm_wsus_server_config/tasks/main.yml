@@ -32,7 +32,6 @@
 
 - name: Run WSUS server configuration tests
   block:
-
     # ==========================================================
     # SECTION 1 — wsus_server_config_info: read-only behavior
     # ==========================================================
@@ -234,7 +233,8 @@
     - name: Cleanup - restore the targeting mode
       microsoft.mecm.wsus_server_config:
         targeting_mode: "{{ _baseline.wsus_server_config.targeting_mode | capitalize }}"
-      ignore_errors: true
+      retries: 3
+      delay: 30
       when:
         - _baseline is defined
         - _baseline.wsus_server_config is defined
@@ -247,7 +247,8 @@
              if (_baseline.wsus_server_config.synchronize_time_of_day | length) > 0
              else omit }}
         number_of_synchronizations_per_day: "{{ _baseline.wsus_server_config.number_of_synchronizations_per_day }}"
-      ignore_errors: true
+      retries: 3
+      delay: 30
       when:
         - _baseline is defined
         - _baseline.wsus_server_config is defined
@@ -259,7 +260,8 @@
           {{ _baseline.wsus_server_config.enabled_languages
              if (_baseline.wsus_server_config.enabled_languages | length) > 0
              else omit }}
-      ignore_errors: true
+      retries: 3
+      delay: 30
       when:
         - _baseline is defined
         - _baseline.wsus_server_config is defined
@@ -267,7 +269,6 @@
     - name: Cleanup - read the configuration back after restoring
       microsoft.mecm.wsus_server_config_info:
       register: _restored
-      ignore_errors: true
       when:
         - _baseline is defined
         - _baseline.wsus_server_config is defined
