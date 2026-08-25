@@ -363,14 +363,21 @@ $spec = @{
         number_of_synchronizations_per_day = @{ type = 'int'; required = $false }
         targeting_mode = @{ type = 'str'; required = $false; choices = @('Client', 'Server') }
     }
-    required_if = @(
-        , @('sync_source', 'upstream_server', @('upstream_server_name'))
-    )
     supports_check_mode = $true
 }
 
 $module = [Ansible.Basic.AnsibleModule]::Create($args, $spec)
 $module.result.changed = $false
+
+# The 'upstream_server_name is required when sync_source=upstream_server' rule is validated
+# here rather than via the argument spec's 'required_if'. ansible-core 2.16's Ansible.Basic
+# throws a NullReferenceException from its required_if check whenever the trigger key
+# (sync_source) is omitted (it calls ToString() on the null value); this was fixed in 2.17.
+# Validating manually keeps the module working on all supported ansible-core versions (>=2.16).
+if (($module.Params.sync_source -eq 'upstream_server') -and
+    ([string]::IsNullOrEmpty($module.Params.upstream_server_name))) {
+    $module.FailJson("sync_source is upstream_server but all of the following are missing: upstream_server_name")
+}
 
 # ---- Connect to the WSUS server ----
 $wsus = Connect-WsusServer -module $module `
