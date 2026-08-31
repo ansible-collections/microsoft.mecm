@@ -1,0 +1,286 @@
+---
+# Integration tests for the wsus_server_config and wsus_server_config_info modules.
+#
+# In this test environment the MECM server and the WSUS server are the same host,
+# so the modules connect to the local WSUS server (no server_name is supplied).
+#
+# These tests mutate the live WSUS server configuration. The original configuration
+# is captured up front and fully restored in the `always` block, so the server is
+# reverted to its baseline even if the test block fails partway through.
+
+- name: Capture the baseline WSUS server configuration
+  microsoft.mecm.wsus_server_config_info:
+  register: _baseline
+
+- name: Assert the baseline configuration was retrieved
+  ansible.builtin.assert:
+    that:
+      - _baseline is not failed
+      - _baseline is not changed
+      - _baseline.wsus_server_config is defined
+      - _baseline.wsus_server_config.targeting_mode in ['client', 'server']
+      - _baseline.wsus_server_config.sync_source in ['microsoft_update', 'upstream_server']
+    fail_msg: "Could not read the baseline WSUS server configuration"
+
+- name: Compute desired test values that differ from the baseline
+  ansible.builtin.set_fact:
+    test_targeting_mode: "{{ 'Server' if _baseline.wsus_server_config.targeting_mode == 'client' else 'Client' }}"
+    test_sync_auto: true
+    test_sync_time: "{{ '02:22' if _baseline.wsus_server_config.synchronize_time_of_day != '02:22' else '03:33' }}"
+    test_syncs_per_day: "{{ ((_baseline.wsus_server_config.number_of_synchronizations_per_day | int) % 24) + 1 }}"
+    test_enabled_languages: "{{ ['en'] if (_baseline.wsus_server_config.enabled_languages | sort) != ['en'] else ['en', 'fr'] }}"
+
+- name: Run WSUS server configuration tests
+  block:
+    # ==========================================================
+    # SECTION 1 — wsus_server_config_info: read-only behavior
+    # ==========================================================
+
+    - name: (Info) Read configuration in check mode
+      microsoft.mecm.wsus_server_config_info:
+      check_mode: true
+      register: _info_check
+
+    - name: (Info) Read configuration a second time
+      microsoft.mecm.wsus_server_config_info:
+      register: _info_second
+
+    - name: (Info) Assert the info module is read-only and stable
+      ansible.builtin.assert:
+        that:
+          - _info_check is not changed
+          - _info_second is not changed
+          - _info_check.wsus_server_config.targeting_mode == _baseline.wsus_server_config.targeting_mode
+          - _info_second.wsus_server_config.sync_source == _baseline.wsus_server_config.sync_source
+          - _baseline.wsus_server_config.enabled_products is iterable
+          - _baseline.wsus_server_config.enabled_classifications is iterable
+        fail_msg: "wsus_server_config_info should be read-only and return a stable configuration"
+
+    # ==========================================================
+    # SECTION 2 — targeting_mode: check mode, change, idempotency
+    # ==========================================================
+
+    - name: (targeting_mode) Change targeting mode - check mode
+      microsoft.mecm.wsus_server_config:
+        targeting_mode: "{{ test_targeting_mode }}"
+      check_mode: true
+      register: _targeting_check
+
+    - name: (targeting_mode) Read configuration after the check-mode change
+      microsoft.mecm.wsus_server_config_info:
+      register: _info_after_targeting_check
+
+    - name: (targeting_mode) Assert check mode reported changed but made no change
+      ansible.builtin.assert:
+        that:
+          - _targeting_check is changed
+          - _info_after_targeting_check.wsus_server_config.targeting_mode == _baseline.wsus_server_config.targeting_mode
+        fail_msg: "Check mode should report changed without modifying the server"
+
+    - name: (targeting_mode) Change targeting mode
+      microsoft.mecm.wsus_server_config:
+        targeting_mode: "{{ test_targeting_mode }}"
+      register: _targeting_change
+
+    - name: (targeting_mode) Change targeting mode - idempotency
+      microsoft.mecm.wsus_server_config:
+        targeting_mode: "{{ test_targeting_mode }}"
+      register: _targeting_idempotent
+
+    - name: (targeting_mode) Read configuration after the change
+      microsoft.mecm.wsus_server_config_info:
+      register: _info_targeting
+
+    - name: (targeting_mode) Assert change, idempotency and reported value
+      ansible.builtin.assert:
+        that:
+          - _targeting_change is changed
+          - _targeting_idempotent is not changed
+          - _info_targeting.wsus_server_config.targeting_mode == (test_targeting_mode | lower)
+        fail_msg: "targeting_mode change was not applied or is not idempotent"
+
+    # ==========================================================
+    # SECTION 3 — synchronization schedule: change and idempotency
+    # ==========================================================
+
+    - name: (schedule) Configure the automatic synchronization schedule
+      microsoft.mecm.wsus_server_config: &schedule_change
+        synchronize_automatically: "{{ test_sync_auto }}"
+        synchronize_time_of_day: "{{ test_sync_time }}"
+        number_of_synchronizations_per_day: "{{ test_syncs_per_day }}"
+      register: _schedule_change
+
+    - name: (schedule) Configure the schedule - idempotency
+      microsoft.mecm.wsus_server_config: *schedule_change
+      register: _schedule_idempotent
+
+    - name: (schedule) Read configuration after the change
+      microsoft.mecm.wsus_server_config_info:
+      register: _info_schedule
+
+    - name: (schedule) Assert change, idempotency and reported values
+      ansible.builtin.assert:
+        that:
+          - _schedule_change is changed
+          - _schedule_idempotent is not changed
+          - _info_schedule.wsus_server_config.synchronize_automatically == (test_sync_auto | bool)
+          - _info_schedule.wsus_server_config.synchronize_time_of_day == test_sync_time
+          - _info_schedule.wsus_server_config.number_of_synchronizations_per_day == (test_syncs_per_day | int)
+        fail_msg: "The synchronization schedule change was not applied or is not idempotent"
+
+    # ==========================================================
+    # SECTION 4 — update languages: change and idempotency
+    # ==========================================================
+
+    - name: (languages) Enable a specific set of update languages
+      microsoft.mecm.wsus_server_config: &languages_change
+        all_update_languages_enabled: false
+        enabled_languages: "{{ test_enabled_languages }}"
+      register: _languages_change
+
+    - name: (languages) Enable languages - idempotency
+      microsoft.mecm.wsus_server_config: *languages_change
+      register: _languages_idempotent
+
+    - name: (languages) Read configuration after the change
+      microsoft.mecm.wsus_server_config_info:
+      register: _info_languages
+
+    - name: (languages) Assert change, idempotency and reported values
+      ansible.builtin.assert:
+        that:
+          - _languages_change is changed
+          - _languages_idempotent is not changed
+          - _info_languages.wsus_server_config.all_update_languages_enabled == false
+          - (_info_languages.wsus_server_config.enabled_languages | sort) == (test_enabled_languages | sort)
+        fail_msg: "The update language change was not applied or is not idempotent"
+
+    # ==========================================================
+    # SECTION 5 — products/classifications: declarative no-op
+    # Re-applying the currently enabled set must not report a change.
+    # ==========================================================
+
+    - name: (classifications) Re-apply the currently enabled classifications - no-op
+      microsoft.mecm.wsus_server_config:
+        classifications: "{{ _baseline.wsus_server_config.enabled_classifications }}"
+      register: _classifications_noop
+
+    - name: (products) Re-apply the currently enabled products - no-op
+      microsoft.mecm.wsus_server_config:
+        products: "{{ _baseline.wsus_server_config.enabled_products }}"
+      register: _products_noop
+
+    - name: (declarative) Assert re-applying the current set is a no-op
+      ansible.builtin.assert:
+        that:
+          - _classifications_noop is not changed
+          - _products_noop is not changed
+        fail_msg: "Re-applying the currently enabled set should not report a change"
+
+    # ==========================================================
+    # SECTION 6 — validation and error handling
+    # ==========================================================
+
+    - name: (validation) An invalid classification title should fail
+      microsoft.mecm.wsus_server_config:
+        classifications:
+          - "{{ test_invalid_classification_title }}"
+      register: _invalid_classification
+      ignore_errors: true
+
+    - name: (validation) Assert the invalid classification is rejected with a helpful message
+      ansible.builtin.assert:
+        that:
+          - _invalid_classification is failed
+          - "'classifications value' in _invalid_classification.msg"
+          - "'was not found on the WSUS server' in _invalid_classification.msg"
+        fail_msg: "An invalid classification title should be rejected with a descriptive error"
+
+    - name: (validation) An invalid product title should fail
+      microsoft.mecm.wsus_server_config:
+        products:
+          - "{{ test_invalid_product_title }}"
+      register: _invalid_product
+      ignore_errors: true
+
+    - name: (validation) Assert the invalid product is rejected with a helpful message
+      ansible.builtin.assert:
+        that:
+          - _invalid_product is failed
+          - "'products value' in _invalid_product.msg"
+          - "'was not found on the WSUS server' in _invalid_product.msg"
+        fail_msg: "An invalid product title should be rejected with a descriptive error"
+
+    - name: (validation) sync_source=upstream_server without a name should fail
+      microsoft.mecm.wsus_server_config:
+        sync_source: upstream_server
+      register: _missing_upstream
+      ignore_errors: true
+
+    - name: (validation) Assert required_if enforces upstream_server_name
+      ansible.builtin.assert:
+        that:
+          - _missing_upstream is failed
+          - "'upstream_server_name' in _missing_upstream.msg"
+        fail_msg: "sync_source=upstream_server should require upstream_server_name"
+
+  always:
+    # ----------------------------------------------------------
+    # Restore the original WSUS server configuration, even if the
+    # test block failed partway through. Each restore is idempotent,
+    # so it is a no-op for anything the tests did not change.
+    # ----------------------------------------------------------
+    - name: Cleanup - restore the targeting mode
+      microsoft.mecm.wsus_server_config:
+        targeting_mode: "{{ _baseline.wsus_server_config.targeting_mode | capitalize }}"
+      retries: 3
+      delay: 30
+      when:
+        - _baseline is defined
+        - _baseline.wsus_server_config is defined
+
+    - name: Cleanup - restore the synchronization schedule
+      microsoft.mecm.wsus_server_config:
+        synchronize_automatically: "{{ _baseline.wsus_server_config.synchronize_automatically }}"
+        synchronize_time_of_day: >-
+          {{ _baseline.wsus_server_config.synchronize_time_of_day
+             if (_baseline.wsus_server_config.synchronize_time_of_day | length) > 0
+             else omit }}
+        number_of_synchronizations_per_day: "{{ _baseline.wsus_server_config.number_of_synchronizations_per_day }}"
+      retries: 3
+      delay: 30
+      when:
+        - _baseline is defined
+        - _baseline.wsus_server_config is defined
+
+    - name: Cleanup - restore the update languages
+      microsoft.mecm.wsus_server_config:
+        all_update_languages_enabled: "{{ _baseline.wsus_server_config.all_update_languages_enabled }}"
+        enabled_languages: >-
+          {{ _baseline.wsus_server_config.enabled_languages
+             if (_baseline.wsus_server_config.enabled_languages | length) > 0
+             else omit }}
+      retries: 3
+      delay: 30
+      when:
+        - _baseline is defined
+        - _baseline.wsus_server_config is defined
+
+    - name: Cleanup - read the configuration back after restoring
+      microsoft.mecm.wsus_server_config_info:
+      register: _restored
+      when:
+        - _baseline is defined
+        - _baseline.wsus_server_config is defined
+
+    - name: Cleanup - assert the configuration was restored to the baseline
+      ansible.builtin.assert:
+        that:
+          - _restored.wsus_server_config.targeting_mode == _baseline.wsus_server_config.targeting_mode
+          - _restored.wsus_server_config.synchronize_automatically == _baseline.wsus_server_config.synchronize_automatically
+          - _restored.wsus_server_config.number_of_synchronizations_per_day == _baseline.wsus_server_config.number_of_synchronizations_per_day
+          - _restored.wsus_server_config.all_update_languages_enabled == _baseline.wsus_server_config.all_update_languages_enabled
+        fail_msg: "The WSUS server configuration was not fully restored to the baseline"
+      when:
+        - _restored is defined
+        - _restored.wsus_server_config is defined

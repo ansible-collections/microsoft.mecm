@@ -1,0 +1,9 @@
+---
+# Static test values for the wsus_server_config integration tests.
+# Values that must differ from the live server are derived from the captured
+# baseline in tasks/main.yml.
+
+# Titles that are guaranteed not to exist on the WSUS server, used to exercise
+# the declarative title validation.
+test_invalid_product_title: "This Product Does Not Exist ANSIBLETEST"
+test_invalid_classification_title: "This Classification Does Not Exist ANSIBLETEST"
