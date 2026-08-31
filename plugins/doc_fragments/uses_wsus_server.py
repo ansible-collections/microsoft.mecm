@@ -34,6 +34,8 @@ options:
         description:
             - The port that the WSUS server listens on.
             - Only used when O(server_name) is provided.
+            - If the port is not provided 8530 will be used for non-SSL connections
+              while 8531 is used for SSL connections
         type: int
         required: false
     use_ssl:
