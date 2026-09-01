@@ -4,6 +4,29 @@ Microsoft Endpoint Configuration Manager (MECM) Ansible Collection. Release Note
 
 .. contents:: Topics
 
+v2.1.0
+======
+
+Minor Changes
+-------------
+
+- requirements.txt - added ``pywinrm`` as the controller-side Python requirement.
+- wsus_server_config - new module to manage WSUS server configuration, including the synchronization source, update languages, products, classifications, synchronization schedule, and targeting mode.
+- wsus_server_config_info - new module to report the configuration of a WSUS server.
+
+Bugfixes
+--------
+
+- README - removed broken link to a ``MAINTAINERS`` file.
+- README - removed orphaned Codecov badge pointing to an unconfigured repository
+- install_updates - replaced bare ``debug`` module usage in EXAMPLES with the fully-qualified ``ansible.builtin.debug`` module.
+
+New Modules
+-----------
+
+- microsoft.mecm.wsus_server_config - Manage the configuration of a WSUS server.
+- microsoft.mecm.wsus_server_config_info - Retrieve the configuration of a WSUS server.
+
 v2.0.0
 ======
 
