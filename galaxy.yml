@@ -2,7 +2,7 @@
 # See https://docs.ansible.com/ansible/latest/dev_guide/collections_galaxy_meta.html
 namespace: microsoft
 name: mecm
-version: 2.0.0
+version: 2.1.0
 readme: README.md
 authors:
   - Ansible Ecosystem Engineering team (@eco-ansible-content)

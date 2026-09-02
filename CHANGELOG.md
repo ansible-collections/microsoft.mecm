@@ -2,14 +2,41 @@
 
 **Topics**
 
+- <a href="#v2-1-0">v2\.1\.0</a>
+    - <a href="#minor-changes">Minor Changes</a>
+    - <a href="#bugfixes">Bugfixes</a>
+    - <a href="#new-modules">New Modules</a>
 - <a href="#v2-0-0">v2\.0\.0</a>
     - <a href="#release-summary">Release Summary</a>
-    - <a href="#minor-changes">Minor Changes</a>
-    - <a href="#breaking-changes--porting-guide">Breaking Changes / Porting Guide</a>
-    - <a href="#bugfixes">Bugfixes</a>
-- <a href="#v1-0-0">v1\.0\.0</a>
     - <a href="#minor-changes-1">Minor Changes</a>
+    - <a href="#breaking-changes--porting-guide">Breaking Changes / Porting Guide</a>
+    - <a href="#bugfixes-1">Bugfixes</a>
+- <a href="#v1-0-0">v1\.0\.0</a>
+    - <a href="#minor-changes-2">Minor Changes</a>
     - <a href="#breaking-changes--porting-guide-1">Breaking Changes / Porting Guide</a>
+
+<a id="v2-1-0"></a>
+## v2\.1\.0
+
+<a id="minor-changes"></a>
+### Minor Changes
+
+* requirements\.txt \- added <code>pywinrm</code> as the controller\-side Python requirement\.
+* wsus\_server\_config \- new module to manage WSUS server configuration\, including the synchronization source\, update languages\, products\, classifications\, synchronization schedule\, and targeting mode\.
+* wsus\_server\_config\_info \- new module to report the configuration of a WSUS server\.
+
+<a id="bugfixes"></a>
+### Bugfixes
+
+* README \- removed broken link to a <code>MAINTAINERS</code> file\.
+* README \- removed orphaned Codecov badge pointing to an unconfigured repository
+* install\_updates \- replaced bare <code>debug</code> module usage in EXAMPLES with the fully\-qualified <code>ansible\.builtin\.debug</code> module\.
+
+<a id="new-modules"></a>
+### New Modules
+
+* microsoft\.mecm\.wsus\_server\_config \- Manage the configuration of a WSUS server\.
+* microsoft\.mecm\.wsus\_server\_config\_info \- Retrieve the configuration of a WSUS server\.
 
 <a id="v2-0-0"></a>
 ## v2\.0\.0
@@ -19,7 +46,7 @@
 
 Expansion of Microsoft\.MECM for Unified Endpoint Management
 
-<a id="minor-changes"></a>
+<a id="minor-changes-1"></a>
 ### Minor Changes
 
 * application \- Add new module to create\, update\, or delete applications in Microsoft Endpoint Configuration Manager \(MECM\)\.
@@ -52,7 +79,7 @@ Expansion of Microsoft\.MECM for Unified Endpoint Management
 
 * install\_updates \- Remove O\(allow\_reboot\) and O\(reboot\_timeout\_minutes\) parameters\. The module no longer reboots the system itself\; instead it returns RV\(reboot\_required\=true\) and the caller is expected to handle the reboot using M\(ansible\.windows\.win\_reboot\)\. This avoids dropping the WinRM connection mid\-task before results are returned\.
 
-<a id="bugfixes"></a>
+<a id="bugfixes-1"></a>
 ### Bugfixes
 
 * device\_collection \- Remove incorrect C\(default\: Manual\) documentation field from C\(refresh\_type\)\; the parameter has no spec\-level default and the conditional creation behaviour is already described in the option description\.
@@ -70,7 +97,7 @@ Expansion of Microsoft\.MECM for Unified Endpoint Management
 <a id="v1-0-0"></a>
 ## v1\.0\.0
 
-<a id="minor-changes-1"></a>
+<a id="minor-changes-2"></a>
 ### Minor Changes
 
 * Add client\_action module

@@ -1,4 +1,0 @@
----
-minor_changes:
-  - wsus_server_config - new module to manage WSUS server configuration, including the synchronization source, update languages, products, classifications, synchronization schedule, and targeting mode.
-  - wsus_server_config_info - new module to report the configuration of a WSUS server.
